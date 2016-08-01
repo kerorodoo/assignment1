@@ -1,11 +1,18 @@
+#  this program is writing for convert and combain *.pts files form
+#  bug.doc.ic.ac.uk/resources/facial-point-annotations/
+#  and we can using the program result for training or testing in dlib.
+
 import sys
 import os
 import glob
 import random
 
+#  declare the folder_path to store the path which contain dataset
+#  the pts_all to store all pts we created
 pts_folder_path = sys.argv[1]
-pts_file_count = 0
 pts_all = []
+
+#  the PTS_Object class
 class PTS_Object(object):
     def __init__(self, _file_path, _landmark_info, _landmarks):
         self._file_path = _file_path
@@ -18,6 +25,7 @@ class PTS_Object(object):
         self._box_top = 0
         self._box_width = 388
         self._box_height = 388
+
     def adjust_box(self):
         x = []
         y = []
@@ -28,6 +36,7 @@ class PTS_Object(object):
         self._box_top = min(y)
         self._box_width = max(x) - min(x)
         self._box_height = max(y) - min(y)
+
     def adjust_precision(self):
         self._box_left = int(self._box_left)
         self._box_top = int(self._box_top)
@@ -36,26 +45,30 @@ class PTS_Object(object):
         for _ptr in range(len(self._landmarks)):
             self._landmarks[_ptr][0] = int(float(self._landmarks[_ptr][0]))
             self._landmarks[_ptr][1] = int(float(self._landmarks[_ptr][1]))
+#  the PTS_Object class
 
 #full pts_object
 pts_in_folder = glob.glob(os.path.join(pts_folder_path, "*.pts"))
 pts_in_folder += glob.glob(os.path.join(pts_folder_path+'/*/', "*.pts"))
 pts_in_folder += glob.glob(os.path.join(pts_folder_path+'/*/*/', "*.pts"))
-for file_path in pts_in_folder:
-    pts_file_count = pts_file_count + 1
-    print("Processing file({}/{}): {}".format(pts_file_count, len(pts_in_folder), file_path))
-    file_ptr = open(file_path, 'r')
+for file_path_ptr in range(len(pts_in_folder)):
+    print("Processing file({}/{}): {}".format(file_path_ptr + 1, len(pts_in_folder), pts_in_folder[file_path_ptr]))
 
+    #  open the pts for read
+    file_ptr = open(pts_in_folder[file_path_ptr], 'r')
+
+    #  initial landmark for each pts
     landmark_info = 0
     landmarks = []
 
+    #  reading the pts and processing string each line in pts
     for line in file_ptr.readlines():
         line = line.replace('\n','')
         if ('n_points:' in line):
             landmark_info = line.rsplit('  ')[1]
         if (' ' in line) and not ('n_points:' in line) and not ('{' in line) and not ('}' in line) and not ('version:' in line):
             landmarks.append(line.rsplit(' '))
-    pts_all.append(PTS_Object(file_path, landmark_info, landmarks))
+    pts_all.append(PTS_Object(pts_in_folder[file_path_ptr], landmark_info, landmarks))
 #full pts_object
 
 #adjust_box
@@ -69,7 +82,7 @@ for pts in pts_all:
 
 #function create_xml
 def create_xml(target_file_name, pts_selected):
-    #write xml
+    #  xml format and content
     xml_head = []
     xml_head.append("<?xml version='1.0' encoding='ISO-8859-1'?>")
     xml_head.append("<?xml-stylesheet type='text/xsl' href='image_metadata_stylesheet.xsl'?>")
@@ -86,11 +99,16 @@ def create_xml(target_file_name, pts_selected):
     xml_foot = []
     xml_foot.append("</images>")
     xml_foot.append("</dataset>")
+    #  xml format and content
 
     print("\nwe are going to create xml: {}\n".format(target_file_name))
+    #  create the xml for writing
     target_file_ptr = open(target_file_name, 'w')
+    #  write xml begine
+    #  write the head part
     for line in xml_head:
         target_file_ptr.write(line + "\n")
+    #  write the face landmark information
     for pts in pts_selected:
         target_file_ptr.write(xml_body[0].format(pts._image_path) + "\n")
         target_file_ptr.write(xml_body[1].format(pts._box_top, pts._box_left, pts._box_width, pts._box_height) + "\n")
@@ -98,10 +116,12 @@ def create_xml(target_file_name, pts_selected):
             target_file_ptr.write(xml_body[2].format(landmark_selected, pts._landmarks[landmark_selected][0], pts._landmarks[landmark_selected][1]) + "\n")
         target_file_ptr.write(xml_body[3] + "\n")
         target_file_ptr.write(xml_body[4] + "\n")
+
+    #  write the foot part
     for line in xml_foot:
         target_file_ptr.write(line + "\n")
     target_file_ptr.close()
-    #write xml
+    #write xml end
 #function create xml
 
 #random pick pts
