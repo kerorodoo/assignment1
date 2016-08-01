@@ -26,6 +26,14 @@ class PTS_Object(object):
         self._box_top = min(y)
         self._box_width = max(x) - min(x)
         self._box_height = max(y) - min(y)
+    def adjust_precision(self):
+        self._box_left = int(self._box_left)
+        self._box_top = int(self._box_top)
+        self._box_width = int(self._box_width)
+        self._box_height = int(self._box_height)
+        for _ptr in range(len(self._landmarks)):
+            self._landmarks[_ptr][0] = int(float(self._landmarks[_ptr][0]))
+            self._landmarks[_ptr][1] = int(float(self._landmarks[_ptr][1]))
 
 #full pts_object
 pts_in_folder = glob.glob(os.path.join(pts_folder_path, "*.pts"))
@@ -52,6 +60,10 @@ for file_path in pts_in_folder:
 for pts in pts_all:
     pts.adjust_box()
 #adjust_box
+#adjust_precision
+for pts in pts_all:
+    pts.adjust_precision()
+#adjust_precision
 
 #function create_xml
 def create_xml(target_file_name, pts_selected):
@@ -61,7 +73,7 @@ def create_xml(target_file_name, pts_selected):
     xml_head.append("<?xml-stylesheet type='text/xsl' href='image_metadata_stylesheet.xsl'?>")
     xml_head.append("<dataset>")
     xml_head.append("<name>imglab dataset</name>")
-    xml_head.append("<comment>Created by imglab tool.</comment>")
+    xml_head.append("<comment>Created by {}.</comment>".format(sys.argv[0]))
     xml_head.append("<images>")
     xml_body = []
     xml_body.append("  <image file='{}'>")
