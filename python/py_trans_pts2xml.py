@@ -18,8 +18,9 @@ class PTS_Object(object):
         self._box_height = 388
 
 #full pts_object
-pts_in_folder = glob.glob(os.path.join(pts_folder_path, "**.pts"))
+pts_in_folder = glob.glob(os.path.join(pts_folder_path, "*.pts"))
 pts_in_folder += glob.glob(os.path.join(pts_folder_path+'/*/', "*.pts"))
+pts_in_folder += glob.glob(os.path.join(pts_folder_path+'/*/*/', "*.pts"))
 for file_path in pts_in_folder:
     pts_file_count = pts_file_count + 1
     print("Processing file({}/{}): {}".format(pts_file_count, len(pts_in_folder), file_path))
