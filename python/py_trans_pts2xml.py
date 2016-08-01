@@ -16,6 +16,16 @@ class PTS_Object(object):
         self._box_top = 0
         self._box_width = 388
         self._box_height = 388
+    def adjust_box(self):
+        x = []
+        y = []
+        for landmark_ptr in self._landmarks:
+            x.append(float(landmark_ptr[0]))
+            y.append(float(landmark_ptr[1]))
+        self._box_left = min(x)
+        self._box_top = min(y)
+        self._box_width = max(x) - min(x)
+        self._box_height = max(y) - min(y)
 
 #full pts_object
 pts_in_folder = glob.glob(os.path.join(pts_folder_path, "*.pts"))
@@ -36,10 +46,12 @@ for file_path in pts_in_folder:
         if (' ' in line) and not ('n_points:' in line) and not ('{' in line) and not ('}' in line) and not ('version:' in line):
             landmarks.append(line.rsplit(' '))
     pts_all.append(PTS_Object(file_path, landmark_info, landmarks))
-
-#for pts in pts_selected:
-#    print("    pts_path: {}\n    pts_landmark_info: {}\n    pts_landmark_count: {}\n    landmark[0]:x({})y({})\n".format(pts._file_path, pts._landmark_info, len(pts._landmarks), pts._landmarks[0][0], pts._landmarks[0][1]))
 #full pts_object
+
+#adjust_box
+for pts in pts_all:
+    pts.adjust_box()
+#adjust_box
 
 #function create_xml
 def create_xml(target_file_name, pts_selected):
