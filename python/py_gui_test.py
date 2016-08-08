@@ -3,6 +3,9 @@ import sys
 import xml.etree.ElementTree as ET
 import Tkinter
 
+import numpy as np
+from skimage import transform as tf
+
 xml_path = sys.argv[1]
 shapes = []
 WIDTH = 200.0
@@ -57,8 +60,8 @@ for image in root.iter('image'):
             shape.addlandmark(part)
         shapes.append(shape)
 
-#  calc the mean shape of all shape in xml
-#  Before the calc the mean shape, we normalized all shape in
+#  calculate the mean shape of all shape in xml
+#  Before the calculate the mean shape, we normalized all shape in
 #  fixed size square. and get the landmark position in the square
 
 #  we declare nor_landmarks variable to store all landmark position
@@ -76,7 +79,7 @@ print "\nnor landmarks len is {}\n".format(len(nor_landmarks))
 print "\nshapes len is {}\n".format(len(shapes))
 print "\nper shape contain {} landmarks\n".format(len(nor_landmarks)/len(shapes))
 
-#  calc the mean value of each landmark
+#  calculate the mean value of each landmark
 #  and store to mean shape
 for i in range(len(nor_landmarks)/len(shapes)):
     temp_x = 0
@@ -91,9 +94,11 @@ for i in range(len(nor_landmarks)/len(shapes)):
 
 
 #  display the mean shape in gui window
+Tkinter.NoDefaultRoot()
 window_width = int(WIDTH)
 window_height = int(HEIGHT)
 window = Tkinter.Tk()
+window.title("mean shape")
 canvas = Tkinter.Canvas(window, width=window_width, height=window_height, bg="#000000")
 canvas.pack()
 img = Tkinter.PhotoImage(width=window_width, height=window_height)
@@ -105,6 +110,42 @@ for part in mean_landmarks:
     circle_buttom = int(part[1]) + CIRCLE_R/2
     canvas.create_oval(circle_left, circle_top, circle_right, circle_buttom, outline="red", fill="green", width=2)
 window.mainloop()
+
+#  display shape list for select
+#  then we could
+
+#  calculate the transform between shapes (ground trurh and mean)
+src_points = []
+dst_points = []
+for landmark_part in shapes[0].get_normalized_landmarks(WIDTH, HEIGHT):
+    src_points.append(landmark_part[0])
+    src_points.append(landmark_part[1])
+for landmark_part in mean_landmarks:
+    dst_points.append(landmark_part[0])
+    dst_points.append(landmark_part[1])
+
+src = np.array(src_points).reshape((len(src_points)/2, 2))
+dst = np.array([dst_points]).reshape((len(dst_points)/2, 2))
+
+tform = tf.estimate_transform('similarity', src, dst)
+
+print "\nthe tform form normalized shape to mean shape:\n"
+print tform._matrix
+
+window2 = Tkinter.Tk()
+window2.title("selected shap")
+canvas2 = Tkinter.Canvas(window2, width=window_width, height=window_height, bg="#000000")
+canvas2.pack()
+img2 = Tkinter.PhotoImage(width=window_width, height=window_height)
+canvas2.create_image((window_width/2, window_height/2), image=img, state="normal")
+for part in shapes[0].get_normalized_landmarks(WIDTH, HEIGHT):
+    circle_left = int(part[0]) - CIRCLE_R/2
+    circle_top = int(part[1]) - CIRCLE_R/2
+    circle_right = int(part[0]) + CIRCLE_R/2
+    circle_buttom = int(part[1]) + CIRCLE_R/2
+    canvas2.create_oval(circle_left, circle_top, circle_right, circle_buttom, outline="red", fill="green", width=2)
+
+
 #  display the landmark transform mean shape, ground truth and image in new
 #  window when finger out the image
 
