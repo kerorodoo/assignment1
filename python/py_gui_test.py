@@ -94,7 +94,6 @@ for i in range(len(nor_landmarks)/len(shapes)):
 
 
 #  display the mean shape in gui window
-Tkinter.NoDefaultRoot()
 window_width = int(WIDTH)
 window_height = int(HEIGHT)
 window = Tkinter.Tk()
@@ -109,7 +108,7 @@ for part in mean_landmarks:
     circle_right = int(part[0]) + CIRCLE_R/2
     circle_buttom = int(part[1]) + CIRCLE_R/2
     canvas.create_oval(circle_left, circle_top, circle_right, circle_buttom, outline="red", fill="green", width=2)
-window.mainloop()
+
 
 #  display shape list for select
 #  then we could
@@ -132,12 +131,12 @@ tform = tf.estimate_transform('similarity', src, dst)
 print "\nthe tform form normalized shape to mean shape:\n"
 print tform._matrix
 
-window2 = Tkinter.Tk()
+window2 = Tkinter.Toplevel()
 window2.title("selected shap")
 canvas2 = Tkinter.Canvas(window2, width=window_width, height=window_height, bg="#000000")
 canvas2.pack()
 img2 = Tkinter.PhotoImage(width=window_width, height=window_height)
-canvas2.create_image((window_width/2, window_height/2), image=img, state="normal")
+canvas2.create_image((window_width/2, window_height/2), image=img2, state="normal")
 for part in shapes[0].get_normalized_landmarks(WIDTH, HEIGHT):
     circle_left = int(part[0]) - CIRCLE_R/2
     circle_top = int(part[1]) - CIRCLE_R/2
@@ -145,7 +144,7 @@ for part in shapes[0].get_normalized_landmarks(WIDTH, HEIGHT):
     circle_buttom = int(part[1]) + CIRCLE_R/2
     canvas2.create_oval(circle_left, circle_top, circle_right, circle_buttom, outline="red", fill="green", width=2)
 
-
+window.mainloop()
 #  display the landmark transform mean shape, ground truth and image in new
 #  window when finger out the image
 
