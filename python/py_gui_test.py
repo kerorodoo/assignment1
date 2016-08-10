@@ -2,14 +2,25 @@
 import sys
 import xml.etree.ElementTree as ET
 import Tkinter
+#from Tkinter import *
 
 import numpy as np
 from skimage import transform as tf
 
+import ttk
+#  for listview
+
+from PIL import Image, ImageTk
+#  for jpg support
+#  required install python-pil.imagetk
+
+import random
+#  for random select shape
+
 xml_path = sys.argv[1]
 shapes = []
-WIDTH = 200.0
-HEIGHT = 200.0
+WIDTH = 400.0
+HEIGHT = 400.0
 CIRCLE_R = 2
 #  shape_object
 class ShapeObject(object):
@@ -23,6 +34,18 @@ class ShapeObject(object):
         self._image_path = image_path
         self._box = box
         self._landmarks = []
+
+    def get_left(self):
+        return int(self._box.get('left'))
+
+    def get_upper(self):
+        return int(self._box.get('top'))
+
+    def get_right(self):
+        return (int(self._box.get('left')) + int(self._box.get('width')))
+
+    def get_lower(self):
+        return (int(self._box.get('top')) + int(self._box.get('height')))
 
     def addlandmark(self, landmark):
         self._landmarks.append(landmark)
@@ -113,10 +136,33 @@ for part in mean_landmarks:
 #  display shape list for select
 #  then we could
 
+#  first we random the index form shapes for observe effect
+ran_ptr = random.randint(0, len(shapes))
+
+#  to-do: create listview for select
+list_view = Tkinter.Tk()
+list_view.title("list of shape")
+tree_view = ttk.Treeview(list_view, columns=('index','image_path'))
+tree_view.column('index', width=100, anchor='center')
+tree_view.column('image_path', width=200, anchor='center')
+
+#  insert data to full tree
+for i in range(len(shapes)):
+    tree_view.insert('' ,i,values=(str(i), shapes[i]._image_path))
+tree_view.pack()
+
+#  vertical scrollbar
+vbar = ttk.Scrollbar(list_view, orient=Tkinter.VERTICAL, command=tree_view.yview)
+tree_view.configure(yscrollcommand=vbar.set)
+tree_view.grid(row=0, column=0, sticky=Tkinter.NSEW)
+vbar.grid(row=0, column=1, sticky=Tkinter.NS)
+
+
+
 #  calculate the transform between shapes (ground trurh and mean)
 src_points = []
 dst_points = []
-for landmark_part in shapes[0].get_normalized_landmarks(WIDTH, HEIGHT):
+for landmark_part in shapes[ran_ptr].get_normalized_landmarks(WIDTH, HEIGHT):
     src_points.append(landmark_part[0])
     src_points.append(landmark_part[1])
 for landmark_part in mean_landmarks:
@@ -135,9 +181,17 @@ window2 = Tkinter.Toplevel()
 window2.title("selected shap")
 canvas2 = Tkinter.Canvas(window2, width=window_width, height=window_height, bg="#000000")
 canvas2.pack()
+
+image = Image.open(shapes[ran_ptr]._image_path)
+
+image = image.crop(box=(shapes[ran_ptr].get_left(), shapes[ran_ptr].get_upper(), shapes[ran_ptr].get_right(), shapes[ran_ptr].get_lower()))
+image = image.resize(size=(window_width, window_height))
+
+photo = ImageTk.PhotoImage(image)
+
 img2 = Tkinter.PhotoImage(width=window_width, height=window_height)
-canvas2.create_image((window_width/2, window_height/2), image=img2, state="normal")
-for part in shapes[0].get_normalized_landmarks(WIDTH, HEIGHT):
+canvas2.create_image((window_width/2, window_height/2), image=photo,               state="normal")
+for part in shapes[ran_ptr].get_normalized_landmarks(WIDTH, HEIGHT):
     circle_left = int(part[0]) - CIRCLE_R/2
     circle_top = int(part[1]) - CIRCLE_R/2
     circle_right = int(part[0]) + CIRCLE_R/2
@@ -145,8 +199,7 @@ for part in shapes[0].get_normalized_landmarks(WIDTH, HEIGHT):
     canvas2.create_oval(circle_left, circle_top, circle_right, circle_buttom, outline="red", fill="green", width=2)
 
 window.mainloop()
+
 #  display the landmark transform mean shape, ground truth and image in new
 #  window when finger out the image
-
-# Code to add widgets will go here...
 
