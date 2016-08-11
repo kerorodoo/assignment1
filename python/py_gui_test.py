@@ -19,6 +19,7 @@ import random
 
 xml_path = sys.argv[1]
 shapes = []
+mean_landmarks = []
 WIDTH = 400.0
 HEIGHT = 400.0
 CIRCLE_R = 2
@@ -83,15 +84,14 @@ for image in root.iter('image'):
             shape.addlandmark(part)
         shapes.append(shape)
 
-#  calculate the mean shape of all shape in xml
-#  Before the calculate the mean shape, we normalized all shape in
-#  fixed size square. and get the landmark position in the square
+    #  calculate the mean shape of all shape in xml
+    #  Before the calculate the mean shape, we normalized all shape in
+    #  fixed size square. and get the landmark position in the square
 
-#  we declare nor_landmarks variable to store all landmark position
-#  after normalized.
-#  and mean_landmarks variable store the mean shape.
+    #  we declare nor_landmarks variable to store all landmark position
+    #  after normalized.
+    #  and mean_landmarks variable store the mean shape.
 nor_landmarks = []
-mean_landmarks = []
 
 for shape in shapes:
     nor_landmark = shape.get_normalized_landmarks(WIDTH, HEIGHT)
@@ -137,19 +137,35 @@ for part in mean_landmarks:
 #  then we could
 
 #  first we random the index form shapes for observe effect
-ran_ptr = random.randint(0, len(shapes))
+shape_ptr = random.randint(0, len(shapes))
 
-#  to-do: create listview for select
+#  create listview for select
 list_view = Tkinter.Tk()
 list_view.title("list of shape")
 tree_view = ttk.Treeview(list_view, columns=('index','image_path'))
+tree_view['show'] = 'headings'
+tree_view.column('#0', width=0)
 tree_view.column('index', width=100, anchor='center')
-tree_view.column('image_path', width=200, anchor='center')
+tree_view.column('image_path', width=300, anchor='center')
+tree_view.heading('index', text='index')
+tree_view.heading('image_path', text='image path')
 
-#  insert data to full tree
+#  insert data to full tree_view
 for i in range(len(shapes)):
     tree_view.insert('' ,i,values=(str(i), shapes[i]._image_path))
 tree_view.pack()
+
+#  bind the event of mouse
+def onListClick(event):
+    selected_item = tree_view.selection()
+    selected_item_index = tree_view.item(selected_item).get('values')[0]
+    selected_item_image_path = tree_view.item(selected_item).get('values')[1]
+    selected_shape_ptr = int(selected_item_index)
+
+    assert selected_item_image_path == shapes[selected_shape_ptr]._image_path, "\nError: image_path not matched ! ! !\n"
+    shape_ptr = selected_shape_ptr
+
+tree_view.bind("<Double-1>", onListClick)
 
 #  vertical scrollbar
 vbar = ttk.Scrollbar(list_view, orient=Tkinter.VERTICAL, command=tree_view.yview)
@@ -158,11 +174,10 @@ tree_view.grid(row=0, column=0, sticky=Tkinter.NSEW)
 vbar.grid(row=0, column=1, sticky=Tkinter.NS)
 
 
-
 #  calculate the transform between shapes (ground trurh and mean)
 src_points = []
 dst_points = []
-for landmark_part in shapes[ran_ptr].get_normalized_landmarks(WIDTH, HEIGHT):
+for landmark_part in shapes[shape_ptr].get_normalized_landmarks(WIDTH, HEIGHT):
     src_points.append(landmark_part[0])
     src_points.append(landmark_part[1])
 for landmark_part in mean_landmarks:
@@ -177,21 +192,23 @@ tform = tf.estimate_transform('similarity', src, dst)
 print "\nthe tform form normalized shape to mean shape:\n"
 print tform._matrix
 
+
+
 window2 = Tkinter.Toplevel()
 window2.title("selected shap")
 canvas2 = Tkinter.Canvas(window2, width=window_width, height=window_height, bg="#000000")
 canvas2.pack()
 
-image = Image.open(shapes[ran_ptr]._image_path)
+image = Image.open(shapes[shape_ptr]._image_path)
 
-image = image.crop(box=(shapes[ran_ptr].get_left(), shapes[ran_ptr].get_upper(), shapes[ran_ptr].get_right(), shapes[ran_ptr].get_lower()))
+image = image.crop(box=(shapes[shape_ptr].get_left(), shapes[shape_ptr].get_upper(), shapes[shape_ptr].get_right(), shapes[shape_ptr].get_lower()))
 image = image.resize(size=(window_width, window_height))
 
 photo = ImageTk.PhotoImage(image)
 
 img2 = Tkinter.PhotoImage(width=window_width, height=window_height)
 canvas2.create_image((window_width/2, window_height/2), image=photo,               state="normal")
-for part in shapes[ran_ptr].get_normalized_landmarks(WIDTH, HEIGHT):
+for part in shapes[shape_ptr].get_normalized_landmarks(WIDTH, HEIGHT):
     circle_left = int(part[0]) - CIRCLE_R/2
     circle_top = int(part[1]) - CIRCLE_R/2
     circle_right = int(part[0]) + CIRCLE_R/2
