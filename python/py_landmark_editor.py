@@ -15,59 +15,44 @@ WIDTH = 400.0
 HEIGHT = 400.0
 CIRCLE_R = 2
 
-class Demo_mean_shape():
-    def __init__(self, master, mean_landmarks):
-        #  display the mean shape in gui window
-        window_width = int(WIDTH)
-        window_height = int(HEIGHT)
+
+class Demo_shapes():
+    #  draw shape and image on window
+    def __init__(self, master, title, shapes, colors):
+
         window = master
-        window.title("mean shape")
-        canvas = Tkinter.Canvas(window, width=window_width, height=window_height, bg="#000000")
+        window.title(title)
+        canvas = Tkinter.Canvas(window, width=int(WIDTH), height=int(HEIGHT), bg="#000000")
+
+        if (shapes[0]._image_path != ''):
+            print "\nopening the image: {}\n".format(shapes[0].get_image_path())
+            image = Image.open(shapes[0].get_image_path())
+
+            #  crop the image by box
+            image = image.crop(box=(shapes[0].get_left(), shapes[0].get_upper(), shapes[0].get_right(), shapes[0].get_lower()))
+            #  scale the image to window-size
+            image = image.resize(size=(int(WIDTH), int(HEIGHT)))
+
+            photo = ImageTk.PhotoImage(image)
+            canvas.create_image((int(WIDTH)/2, int(HEIGHT)/2), image=photo, state="normal")
+
+            # keep a reference
+            canvas.image = photo
+
         canvas.pack()
-        img = Tkinter.PhotoImage(width=window_width, height=window_height)
-        canvas.create_image((window_width/2, window_height/2), image=img, state="normal")
-        for part in mean_landmarks:
-            circle_left = int(part[0]) - CIRCLE_R/2
-            circle_top = int(part[1]) - CIRCLE_R/2
-            circle_right = int(part[0]) + CIRCLE_R/2
-            circle_buttom = int(part[1]) + CIRCLE_R/2
-            canvas.create_oval(circle_left, circle_top, circle_right, circle_buttom, outline="red", fill="green", width=2)
 
-class Demo_selected_shape():
-    def __init__(self, master, shapes, shape_ptr):
-        window_width = int(WIDTH)
-        window_height = int(HEIGHT)
-
-        window2 = master
-        window2.title("selected {} shap".format(str(shape_ptr)))
-        canvas2 = Tkinter.Canvas(window2, width=window_width, height=window_height, bg="#000000")
-
-        print "\nopening the image: {}\n".format(shapes[shape_ptr]._image_path)
-        image = Image.open(shapes[shape_ptr]._image_path)
-
-        #  crop the image by box
-        image = image.crop(box=(shapes[shape_ptr].get_left(), shapes[shape_ptr].get_upper(), shapes[shape_ptr].get_right(), shapes[shape_ptr].get_lower()))
-        #  scale the image to window-size
-        image = image.resize(size=(window_width, window_height))
-
-        photo = ImageTk.PhotoImage(image)
-        canvas2.create_image((window_width/2, window_height/2), image=photo, state="normal")
-
-        # keep a reference
-        canvas2.image = photo
-        canvas2.pack()
-
-        for part in shapes[shape_ptr].get_normalized_landmarks(WIDTH, HEIGHT):
-            circle_left = int(part[0]) - CIRCLE_R/2
-            circle_top = int(part[1]) - CIRCLE_R/2
-            circle_right = int(part[0]) + CIRCLE_R/2
-            circle_buttom = int(part[1]) + CIRCLE_R/2
-            canvas2.create_oval(circle_left, circle_top, circle_right, circle_buttom, outline="red", fill="green", width=2)
+        for i in range(len(shapes)):
+            for part in shapes[i].get_normalized_landmarks(int(WIDTH), int(HEIGHT)):
+                circle_left = int(part[0]) - CIRCLE_R/2
+                circle_top = int(part[1]) - CIRCLE_R/2
+                circle_right = int(part[0]) + CIRCLE_R/2
+                circle_buttom = int(part[1]) + CIRCLE_R/2
+                canvas.create_oval(circle_left, circle_top, circle_right, circle_buttom, outline=colors[i], fill=colors[i], width=2*(i+1))
 
 class List_view_all_shapes():
-    def __init__(self, master, shapes):
+    def __init__(self, master, model):
         self.shape_ptr = 0
-        self.shapes = shapes
+        self.shapes = model.get_shapes()
 
         #  create listview for select
         list_view = master
@@ -102,7 +87,12 @@ class List_view_all_shapes():
             self.shape_ptr = selected_shape_ptr
 
             self.newWindow = Tkinter.Toplevel(list_view)
-            self.app = Demo_selected_shape(self.newWindow, self.shapes, self.shape_ptr)
+            self.newWindowTitle = "selected {}-th shape".format(self.shape_ptr)
+            self.newWindowShapes = []
+            self.newWindowShapes.append(self.shapes[self.shape_ptr])
+            self.newWindowShapes.append(model.calcuate_shape_from_mean(self.shapes[self.shape_ptr]))
+            self.newWindowColors = ['red', 'green']
+            self.app = Demo_shapes(self.newWindow, self.newWindowTitle, self.newWindowShapes, self.newWindowColors)
 
         tree_view.bind("<Double-1>", onListDoubleClick)
 
@@ -118,16 +108,21 @@ def main():
     if (len(sys.argv) == 2):
         xml_path = sys.argv[1]
 
+    print sys.argv[0]
+
     model = m.Model(xml_path, WIDTH, HEIGHT)
 
-    shapes = model.get_shapes()
     root = Tkinter.Tk()
-    app = List_view_all_shapes(root, shapes)
-
+    app = List_view_all_shapes(root, model)
 
     mean_shape = model.get_mean_shape()
-    child = Tkinter.Toplevel()
-    appslave = Demo_mean_shape(child, mean_shape)
+    model.calculate_mean_shape_image()
+    childWindowShape = [mean_shape]
+    childWindow = Tkinter.Toplevel()
+    childWindowTitle = "mean shape"
+    childWindowColor = ['red']
+    appslave = Demo_shapes(childWindow, childWindowTitle, childWindowShape, childWindowColor)
+
 
     root.mainloop()
 
