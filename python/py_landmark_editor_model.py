@@ -223,12 +223,13 @@ class Model():
 
 
             #  second: getting tform between shape
-            # tform = self.calcuate_transform_from_shape_to_mean(shape)
+            tform = self.calcuate_transform_from_shape_to_mean(shape)
 
             #  third: warp image
-            # warped = tf.warp(imarr, inverse_map=tform.inverse)
+            warped = tf.warp(imarr, tform, output_shape=(self.width, self.height))
+            warped_image = imarr * warped
 
-            image_arry = image_arry + imarr / len(self.shapes)
+            image_arry = image_arry + warped_image / len(self.shapes)
 
         image_arry = np.array(np.round(image_arry), dtype=np.uint8)
 
