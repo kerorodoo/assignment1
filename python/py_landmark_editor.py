@@ -25,7 +25,12 @@ class Demo_shapes():
         canvas = Tkinter.Canvas(window, width=int(WIDTH), height=int(HEIGHT), bg="#000000")
 
         if (shapes[0]._image_path != ''):
-            print "\nopening the image: {}\n".format(shapes[0].get_image_path())
+
+            #  print the which image will opening
+            sys.stdout.write(
+                    "\nopening the image with path: {}\n".format(
+                        shapes[0].get_image_path()))
+
             image = Image.open(shapes[0].get_image_path())
 
             #  crop the image by box
@@ -75,13 +80,12 @@ class List_view_all_shapes():
             selected_item = tree_view.selection()
 
             #  check the item value is valid
-            assert len(tree_view.item(selected_item).get('values')) == 2, "\nError: item invalid ! ! !\n"
+            assert (tree_view.item(selected_item).get('values') != str(''), "\nWarring: invalid selected ! ! !\n")
 
             selected_item_index = tree_view.item(selected_item).get('values')[0]
             selected_item_image_path = tree_view.item(selected_item).get('values')[1]
             selected_shape_ptr = int(selected_item_index)
 
-            assert selected_item_image_path == self.shapes[selected_shape_ptr]._image_path, "\nError: image_path not matched ! ! !\n"
 
             #  store the selected index
             self.shape_ptr = selected_shape_ptr
@@ -108,7 +112,6 @@ def main():
     if (len(sys.argv) == 2):
         xml_path = sys.argv[1]
 
-    print sys.argv[0]
 
     model = m.Model(xml_path, WIDTH, HEIGHT)
 

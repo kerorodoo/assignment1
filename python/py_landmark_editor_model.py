@@ -46,7 +46,6 @@ class ShapeObject(object):
         self._x_scale = width / float(self._box.get('width'))
         self._y_scale = height / float(self._box.get('height'))
 
-        print "\nthe scale in x:{}, y:{}\n".format(self._x_scale, self._y_scale)
 
         for landmark in self._landmarks:
             x_position = (float(landmark.get('x')) - float(self._box.get('left'))) * self._x_scale
@@ -111,17 +110,25 @@ class Model():
         mean_shape = ShapeObject('', box)
 
         for shape in self.shapes:
-            nor_landmark = shape.get_normalized_landmarks(self.width, self.height)
+            #  print the program working staus
+            sys.stdout.write(
+                    "\rcalculating normalized landmark location: {}/{}".format(
+                        self.shapes.index(shape) + 1, len(self.shapes)))
+
+            nor_landmark = (
+                    shape.get_normalized_landmarks(self.width, self.height))
+
             for nor_landmark_part in nor_landmark:
                 nor_landmarks.append(nor_landmark_part)
 
+        sys.stdout.write("\n")
 
         #  calculate the mean value of each landmark
         #  and store to mean shape
-        for i in range(len(nor_landmarks)/len(self.shapes)):
+        for i in range(len(nor_landmarks) / len(self.shapes)):
             temp_x = 0
             temp_y = 0
-            landmark_per_shape = len(nor_landmarks)/len(self.shapes)
+            landmark_per_shape = len(nor_landmarks) / len(self.shapes)
 
             for ptr in range(len(self.shapes)):
                 temp_x += nor_landmarks[i + landmark_per_shape * ptr][0]
@@ -144,19 +151,25 @@ class Model():
             src_points.append(landmark_part[0])
             src_points.append(landmark_part[1])
 
-        src = np.array(src_points).reshape((len(src_points)/2, 2))
+        src = np.array(src_points).reshape((len(src_points) / 2, 2))
+
+        #  inverse transform from mean space to sample space
         dst = tform.inverse(src)
 
         #  the dst_shape store shape calculate from mean shape
+        #  trans the dst from array to list
         dst_shape = dst.tolist()
 
         #  create the ShapeObject to store the shape we calculate
         estimate_shape = ShapeObject(shape._image_path, shape._box)
 
-
+        #  re-warp the list to dict object
         for i in range(len(dst)):
-            temp_x = dst_shape[i][0]/shape._x_scale + float(shape._box.get('left'))
-            temp_y = dst_shape[i][1]/shape._y_scale + float(shape._box.get('top'))
+            temp_x = dst_shape[i][0] / shape._x_scale + (
+                    float(shape._box.get('left')))
+            temp_y = dst_shape[i][1] / shape._y_scale + (
+                    float(shape._box.get('top')))
+
             estimate_landmark = {'x': temp_x, 'y': temp_y}
             estimate_shape.addlandmark(estimate_landmark)
 
@@ -186,31 +199,41 @@ class Model():
         return tform
 
     def calculate_mean_shape_image(self):
-        #  create the image to store the average pixel of all image
-        #  after warped
-        image_arry = np.zeros((self.width, self.height, 3), dtype=np.float)
+        #  create the image_arry shape in width x height x channels
+        #  to store the average pixel of all image
         #
+        image_arry = np.zeros((self.width, self.height, 3), dtype=np.float)
+
         for shape in self.shapes:
-            image = Image.open(shape.get_image_path())
+            #  print the current work status
+            sys.stdout.write(
+                    "\rcalculating mean image: {}/{} ".format(
+                        self.shapes.index(shape) + 1 , len(self.shapes)))
+
+            #  open image from path and convert to RGB
+            image = Image.open(shape.get_image_path()).convert('RGB')
+
             #  crop the image by box
             image = image.crop(box=(shape.get_left(), shape.get_upper(), shape.get_right(), shape.get_lower()))
             image = image.resize(size=(int(self.width), int(self.height)))
 
             #  warping image with tform
             #  first: convert the image to array
-            imarr = np.array(image, dtype=np.float)
+            imarr = np.array(image.getdata(), dtype=np.float).reshape(image.size[0], image.size[1], 3)
+
 
             #  second: getting tform between shape
-            tform = self.calcuate_transform_from_shape_to_mean(shape)
+            # tform = self.calcuate_transform_from_shape_to_mean(shape)
 
             #  third: warp image
-            warped = tf.warp(imarr, inverse_map=tform)
+            # warped = tf.warp(imarr, inverse_map=tform.inverse)
 
             image_arry = image_arry + imarr / len(self.shapes)
 
         image_arry = np.array(np.round(image_arry), dtype=np.uint8)
 
         out=Image.fromarray(image_arry, mode=None)
-        print "\nstore Averge.png\n"
+
+        sys.stdout.write("\nstore Averge.png at CWD\n")
         out.save("Average.png")
         self.mean_shape._image_path = "Average.png"
