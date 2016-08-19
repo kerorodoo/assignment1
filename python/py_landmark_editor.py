@@ -76,15 +76,22 @@ class Demo_shapes():
                     outline=circle_color, fill=circle_color,
                     width=2 * (shape_idx + 1) )
 
-            self.canvas.bind("<ButtonPress-1>", self.on_button_press)
+        self.canvas.bind("<ButtonPress-1>", self.on_left_button_press)
+        self.canvas.bind("<ButtonPress-3>", self.on_right_button_press)
 
-    def on_button_press(self, event):
+    def on_left_button_press(self, event):
         self.x = int(event.x)
         self.y = int(event.y)
         self.model.add_landmark_to_mean_shape(self.x, self.y)
         self.canvas.create_oval(self.x - CIRCLE_R / 2, self.y - CIRCLE_R / 2,
             self.x + CIRCLE_R / 2, self.y + CIRCLE_R / 2, outline="blue",
             fill="blue", width=2)
+
+    def on_right_button_press(self, event):
+        self.x = int(event.x)
+        self.y = int(event.y)
+        self.model.remove_landmark_from_mean_shape(self.x, self.y)
+
 
 class List_view_all_shapes():
 
@@ -174,7 +181,8 @@ def main():
     app = List_view_all_shapes(root, model)
 
     mean_shape = model.get_mean_shape()
-    model.calculate_mean_shape_image()
+
+    #model.calculate_mean_shape_image()
 
     childWindowShape = [mean_shape]
     childWindow = Tkinter.Toplevel()

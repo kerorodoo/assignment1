@@ -10,6 +10,8 @@ from PIL import Image, ImageTk
 #  for jpg support
 #  required install python-pil.imagetk
 
+from scipy.spatial.distance import pdist, squareform
+
 ###########################################
 #  The Enumeration class:
 #    using the enum define landmark status
@@ -64,6 +66,9 @@ class ShapeObject(object):
             'y': landmark.get('y'),
             'status': status}
         self._landmarks.append(landmark_dict)
+
+    def edit_landmark_status(self, landmark_idx, status):
+        self._landmarks[landmark_idx]['status'] = status
 
     def get_normalized_landmarks(self, width = 1.0, height = 1.0):
         normalized_landmarks = []
@@ -218,19 +223,17 @@ class Model():
         #  calculate the shape from mean shape
         tform = shape.get_tform()
 
-        src_points = []
+        #  the landmark we estimate keep the landmark status
+        #  from mean shape, this will store their status
         landmark_status = []
 
         for landmark_part in self.mean_shape.get_normalized_landmarks(
                 self.width, self.height):
-            src_points.append(landmark_part[0])
-            src_points.append(landmark_part[1])
-
             #  copy the landmark status form mean_shape
             landmark_status.append(landmark_part[2])
 
-
-        src = np.array(src_points).reshape((len(src_points) / 2, 2))
+        src = self.convert_landmarks_to_nparray(
+            self.mean_shape.get_normalized_landmarks(self.width, self.height))
 
         #  inverse transform from mean space to sample space
         dst = tform.inverse(src)
@@ -265,25 +268,26 @@ class Model():
 
         return estimate_shape
 
+    def convert_landmarks_to_nparray(self, landmarks):
+        #  convert the landmark position from
+        #  list to nparray
+        points = []
+
+        for landmark_part in landmarks:
+            points.append(landmark_part[0])
+            points.append(landmark_part[1])
+
+        src = np.array(points).reshape(
+            (len(points) / 2, 2))
+        return src
 
     def calcuate_transform_from_shape_to_mean(self, shape):
         #  calculate the transform between shapes (ground trurh and mean)
-        src_points = []
-        dst_points = []
-        for landmark_part in shape.get_normalized_landmarks(
-                self.width, self.height):
-            src_points.append(landmark_part[0])
-            src_points.append(landmark_part[1])
+        src = self.convert_landmarks_to_nparray(
+            shape.get_normalized_landmarks(self.width, self.height))
 
-        for landmark_part in self.mean_shape.get_normalized_landmarks(
-                self.width, self.height):
-            dst_points.append(landmark_part[0])
-            dst_points.append(landmark_part[1])
-
-        src = np.array(src_points).reshape(
-            (len(src_points) / 2, 2))
-        dst = np.array([dst_points]).reshape(
-            (len(dst_points) / 2, 2))
+        dst = self.convert_landmarks_to_nparray(
+            self.mean_shape.get_normalized_landmarks(self.width, self.height))
 
         tform = tf.estimate_transform(
             'piecewise-affine', src, dst)
@@ -349,3 +353,24 @@ class Model():
         landmark = {'x': x, 'y': y}
         self.mean_shape.addlandmark(landmark, LandmarkStatus.ADDED)
 
+    def compute_nearest_landmark(self, x, y):
+        compare_to = self.convert_landmarks_to_nparray(
+            self.mean_shape.get_normalized_landmarks(self.width, self.height))
+        compare_from = np.array([x, y])
+
+        compare = np.vstack((compare_to, compare_from))
+
+        compare_result = squareform(pdist(compare, 'euclidean'))[:-1,-1]
+
+        nearest_idx = np.argmin(compare_result)
+
+        sys.stdout.write("\nnearest is {}-th landmark\n".format(nearest_idx))
+
+        return nearest_idx
+
+    def remove_landmark_from_mean_shape(self, x, y):
+        target_landmark_idx = self.compute_nearest_landmark(x, y)
+        self.mean_shape.edit_landmark_status(
+            target_landmark_idx,
+            LandmarkStatus.DELETED)
+        sys.stdout.write("\nremoved {}-th landmark\n".format(nearest_idx))
