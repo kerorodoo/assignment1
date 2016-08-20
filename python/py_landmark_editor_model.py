@@ -34,11 +34,6 @@ LandmarkStatus = Enumeration("VIEW ADDED DELETED")
 #########################################
 class ShapeObject(object):
 
-    def __init__(self, image_path, box, landmarks):
-        self._image_path = image_path
-        self._box = box
-        self._landmarks = landmarks
-
     def __init__(self, image_path, box):
         self._image_path = image_path
         self._box = box
@@ -146,6 +141,9 @@ class Model():
     def get_mean_shape(self):
         return self.mean_shape
 
+    #################################################
+    #  parse xml and create shape object
+    #################################################
     def parse_xml(self, xml_path):
         ##  parse the xml file to full shape_object
         ##  which the xml have ground truth each shape
@@ -169,6 +167,10 @@ class Model():
     #  Before the calculate the mean shape, we normalized all shape in
     #  fixed size square. and get the landmark position in the square
 
+    ###############################################
+    #  using normalized location calculate mean
+    #  shape's lanmark potion
+    ###############################################
     def calculate_mean_shape(self):
         #  we declare nor_landmarks variable to store all landmark position
         #  after normalized.
@@ -219,9 +221,11 @@ class Model():
 
         return mean_shape
 
+    ######################################################
+    #  estimate the landmark position in shape
+    #  space from mean space position and transform matrix
+    ######################################################
     def estimate_shape_from_mean(self, shape):
-        #  calculate the shape from mean shape
-        tform = shape.get_tform()
 
         #  the landmark we estimate keep the landmark status
         #  from mean shape, this will store their status
@@ -231,6 +235,11 @@ class Model():
                 self.width, self.height):
             #  copy the landmark status form mean_shape
             landmark_status.append(landmark_part[2])
+
+        #  getting the shape transform matrix
+        #  from shape , the we can accroding that
+        #  transform mean space to shape space
+        tform = shape.get_tform()
 
         src = self.convert_landmarks_to_nparray(
             self.mean_shape.get_normalized_landmarks(self.width, self.height))
@@ -268,6 +277,10 @@ class Model():
 
         return estimate_shape
 
+    ##################################################
+    #  this function provid us convert the landmark
+    #  format (in shape) to numpy.arrary
+    ##################################################
     def convert_landmarks_to_nparray(self, landmarks):
         #  convert the landmark position from
         #  list to nparray
@@ -281,14 +294,26 @@ class Model():
             (len(points) / 2, 2))
         return src
 
+    #########################################################
+    #  calculate the transform from shape (in xml) to
+    #  mean shape (we calculate), accroding this we can
+    #  estimate new landmark point from  mean space to
+    #  each shape space
+    #########################################################
     def calcuate_transform_from_shape_to_mean(self, shape):
         #  calculate the transform between shapes (ground trurh and mean)
+
+        #  we convert the landmark format to numpy.array
+        #  src store the landmark position information of shape in xml
+        #  dst store the landmark position information of mean shape
         src = self.convert_landmarks_to_nparray(
             shape.get_normalized_landmarks(self.width, self.height))
 
         dst = self.convert_landmarks_to_nparray(
             self.mean_shape.get_normalized_landmarks(self.width, self.height))
 
+        #  after format converted we can using numpy library find out
+        #  transform matrix
         tform = tf.estimate_transform(
             'piecewise-affine', src, dst)
 
@@ -296,10 +321,15 @@ class Model():
         #  print tform._matrix
         return tform
 
+    #############################################################
+    #  calculate the mean shape image, of all image in xml
+    #  with transform, then we can display the image and mean
+    #  shape together
+    #############################################################
     def calculate_mean_shape_image(self):
         #  create the image_arry shape in width x height x channels
         #  to store the average pixel of all image
-        #
+
         image_arry = np.zeros(
             (self.width, self.height, 3),
             dtype=np.float)
@@ -349,28 +379,50 @@ class Model():
         out.save("Average.png")
         self.mean_shape._image_path = "Average.png"
 
+    #######################################################
+    # direct add point x,y as new landmark into mean shape
+    # with landmark status: ADDED
+    #######################################################
     def add_landmark_to_mean_shape(self, x, y):
         landmark = {'x': x, 'y': y}
         self.mean_shape.addlandmark(landmark, LandmarkStatus.ADDED)
 
+    #######################################################
+    #  find out the nearest landmark from x,y in mean shape
+    #######################################################
     def compute_nearest_landmark(self, x, y):
+        #  we want to using numpy library to calculate distance
+        #  betweent, need to convert landmark to numpy.array format
         compare_to = self.convert_landmarks_to_nparray(
             self.mean_shape.get_normalized_landmarks(self.width, self.height))
         compare_from = np.array([x, y])
 
+        #  push x,y to last row of numpy.array
         compare = np.vstack((compare_to, compare_from))
 
+        #  calculate the point-to-point distance
+        #  and take out we need: point(x,y) to other points
         compare_result = squareform(pdist(compare, 'euclidean'))[:-1,-1]
 
+        #  get which landmark has minimum distance
         nearest_idx = np.argmin(compare_result)
 
         sys.stdout.write("\nnearest is {}-th landmark\n".format(nearest_idx))
 
         return nearest_idx
 
+    #######################################################
+    #  remove the nearest landmark from x,y in mean shape
+    #######################################################
     def remove_landmark_from_mean_shape(self, x, y):
+        #  we want to remove the nearest landmark, first we
+        #  find out which landmark is nearest
         target_landmark_idx = self.compute_nearest_landmark(x, y)
+
+        #  change landmark status to DELETED to target landmark
         self.mean_shape.edit_landmark_status(
             target_landmark_idx,
             LandmarkStatus.DELETED)
-        sys.stdout.write("\nremoved {}-th landmark\n".format(nearest_idx))
+
+        sys.stdout.write("\nremoved {}-th landmark\n".format(
+            target_landmark_idx))
