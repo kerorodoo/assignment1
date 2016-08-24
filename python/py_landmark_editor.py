@@ -184,7 +184,6 @@ def main():
     app = List_view_all_shapes(root, model)
 
     mean_shape = model.get_mean_shape()
-
     model.calculate_mean_shape_image()
 
     childWindowShape = [mean_shape]

@@ -14,6 +14,9 @@ from scipy.spatial.distance import pdist, squareform
 
 from xml.dom import minidom
 
+import os.path
+#  for checking file if exist
+
 ###########################################
 #  The Enumeration class:
 #    using the enum define landmark status
@@ -331,6 +334,12 @@ class Model():
     def calculate_mean_shape_image(self):
         #  create the image_arry shape in width x height x channels
         #  to store the average pixel of all image
+
+        #  checking the Average.png if exist
+        if os.path.isfile("Average.png"):
+            sys.stdout.write("\nAverage.png existed, skip re-calculate ! ! !\n")
+            self.mean_shape._image_path = "Average.png"
+            return
 
         image_arry = np.zeros(
             (self.width, self.height, 3),
