@@ -78,6 +78,7 @@ class Demo_shapes():
 
         self.canvas.bind("<ButtonPress-1>", self.on_left_button_press)
         self.canvas.bind("<ButtonPress-3>", self.on_right_button_press)
+        self.window.bind("<s>", self.on_s_press)
 
     def on_left_button_press(self, event):
         self.x = int(event.x)
@@ -91,6 +92,9 @@ class Demo_shapes():
         self.x = int(event.x)
         self.y = int(event.y)
         self.model.remove_landmark_from_mean_shape(self.x, self.y)
+
+    def on_s_press(self, event):
+        self.model.write_xml_to_file("test.xml")
 
 
 class List_view_all_shapes():
@@ -174,7 +178,6 @@ def main():
     if (len(sys.argv) == 2):
         xml_path = sys.argv[1]
 
-
     model = m.Model(xml_path, WIDTH, HEIGHT)
 
     root = Tkinter.Tk()
@@ -182,7 +185,7 @@ def main():
 
     mean_shape = model.get_mean_shape()
 
-    #model.calculate_mean_shape_image()
+    model.calculate_mean_shape_image()
 
     childWindowShape = [mean_shape]
     childWindow = Tkinter.Toplevel()

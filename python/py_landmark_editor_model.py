@@ -12,6 +12,8 @@ from PIL import Image, ImageTk
 
 from scipy.spatial.distance import pdist, squareform
 
+from xml.dom import minidom
+
 ###########################################
 #  The Enumeration class:
 #    using the enum define landmark status
@@ -380,8 +382,8 @@ class Model():
         self.mean_shape._image_path = "Average.png"
 
     #######################################################
-    # direct add point x,y as new landmark into mean shape
-    # with landmark status: ADDED
+    #  direct add point x,y as new landmark into mean shape
+    #  with landmark status: ADDED
     #######################################################
     def add_landmark_to_mean_shape(self, x, y):
         landmark = {'x': x, 'y': y}
@@ -426,3 +428,65 @@ class Model():
 
         sys.stdout.write("\nremoved {}-th landmark\n".format(
             target_landmark_idx))
+
+    #########################################################
+    #  Building the xml document form shapes with landmark
+    #  , landmark status
+    #########################################################
+    def write_xml_to_file(self, filename):
+        # prepare shapes for write
+        shapes = []
+        for shape in self.shapes:
+            shapes.append(self.estimate_shape_from_mean(shape))
+
+        # Add desired xml declare and processing instructions.
+        xml_head = "<?xml version='{}' encoding='{}'?>\n".format(
+            "1.0",
+            "ISO-8859-1")
+        xml_pi = "<?xml-stylesheet type='{}' href='{}'?>\n".format(
+            "text/xsl",
+            "image_metadata_stylesheet.xsl")
+
+        #  open the file to write
+        target_file = open(filename, 'w')
+
+        #  write head to xml file
+        target_file.write(xml_head)
+        target_file.write(xml_pi)
+
+        target_file.write("<dataset>\n")
+        target_file.write("<name>imglab dataset</name>\n")
+        target_file.write(
+            "<comment>Created by {}.</comment>\n".format(__name__))
+        target_file.write("<images>\n")
+
+        #  write shapes to xml file
+        for shape in shapes:
+            target_file.write(
+                "  <image file='{}'>\n".format(shape.get_image_path()))
+            target_file.write("     <box")
+            target_file.write(" top = '{}'".format(shape._box.get('top')))
+            target_file.write(" left = '{}'".format(shape._box.get('left')))
+            target_file.write(" width = '{}'".format(shape._box.get('width')))
+            target_file.write(" height = '{}'>\n"
+                .format(shape._box.get('height')))
+
+            count = 0
+            for landmark in shape._landmarks:
+                if landmark.get('status')!=LandmarkStatus.DELETED:
+                    target_file.write(
+                        "         <part name='{}' x='{}' y='{}'/>\n".format(
+                        count,
+                        int(landmark.get('x')),
+                        int(landmark.get('y'))) )
+                    count = count + 1
+
+            target_file.write("     </box>\n")
+            target_file.write("  </image>\n")
+
+        #  write foot to xml file
+        target_file.write("</images>\n")
+        target_file.write("</dataset>")
+
+        target_file.close()
+        sys.stdout.write("\nwrite xml:{} finished ! ! ! \n".format(filename))
