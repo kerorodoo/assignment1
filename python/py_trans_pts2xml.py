@@ -16,9 +16,11 @@ pts_all = []
 class PTS_Object(object):
     def __init__(self, _file_path, _landmark_info, _landmarks):
         self._file_path = _file_path
-        self._image_path = _file_path.replace(".pts", ".jpg")
-        if _file_path.find("lfpw") > 0:
+        if os.path.isfile(_file_path.replace(".pts", ".jpg")):
+            self._image_path = _file_path.replace(".pts", ".jpg")
+        if os.path.isfile(_file_path.replace(".pts", ".png")):
             self._image_path = _file_path.replace(".pts", ".png")
+
         self._landmark_info = _landmark_info
         self._landmarks = _landmarks
         self._box_left = 0
