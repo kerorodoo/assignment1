@@ -349,15 +349,13 @@ int main(int argc, char** argv)
             std::vector<full_object_detection> shapes;
             for (unsigned long j = 0; j < dets.size(); ++j)
             {
-                std::vector<full_object_detection> det_shapes = sp(img, dets[j]);
-                full_object_detection shape = det_shapes.back();
+                full_object_detection shape = sp(img, dets[j]);
                 cout << "number of parts: "<< shape.num_parts() << endl;
                 cout << "pixel position of first part:  " << shape.part(0) << endl;
                 cout << "pixel position of second part: " << shape.part(1) << endl;
                 // You get the idea, you can get all the face part locations if
                 // you want them.  Here we just store them in shapes so we can
                 // put them on the screen.
-                shapes.insert(shapes.end(), det_shapes.begin(), det_shapes.end());
             }
             
 

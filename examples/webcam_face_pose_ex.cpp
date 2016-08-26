@@ -233,14 +233,6 @@ std::vector<image_window::overlay_line> render_face_detections_adaptive(
    std::vector<image_window::overlay_line> lines;
         for (unsigned long i = 0; i < dets.size(); ++i)
         {
-            DLIB_CASSERT(dets[i].num_parts() == 68 ||
-                         dets[i].num_parts() == 194,
-                "\t std::vector<image_window::overlay_line> render_face_detections()"
-                << "\n\t Invalid inputs were given to this function. "
-                << "\n\t dets["<< i <<"].num_parts():  " << dets[i].num_parts()
-            );
-
-
            const full_object_detection& d= dets[i];
            // Around Chin. Ear to Ear
            std::vector<int> set = get_around_chin_ear_to_ear_part(dets[i].num_parts());
@@ -290,6 +282,31 @@ std::vector<image_window::overlay_line> render_face_detections_adaptive(
                lines.push_back(image_window::overlay_line(d.part(set[pen]), d.part(set[pen-1]), color));
          }
 return lines;
+}
+
+
+std::vector<image_window::overlay_circle> render_face_detections_noline(
+    const std::vector<full_object_detection>& dets,
+    const rgb_pixel color = rgb_pixel(0,255,0)
+)
+{
+    std::vector<image_window::overlay_circle> circles;
+
+    for (unsigned long i = 0; i < dets.size(); ++i)
+    {
+        const full_object_detection& d = dets[i];
+
+        for (int pen = 0; pen < d.num_parts(); pen++)
+        {
+            unsigned long radius = 5;
+            point center(d.part(pen));
+
+            circles.push_back(
+                image_window::overlay_circle(center, radius, color)
+                );
+        }
+    }
+    return circles;
 }
 
 //Todo :: get_face_chip_details
@@ -343,12 +360,20 @@ int main(int argc, char** argv)
             // Find the pose of each face.
             std::vector<full_object_detection> shapes;
             for (unsigned long i = 0; i < faces.size(); ++i)
-                shapes.push_back(pose_model(cimg, faces[i]).back());
+                shapes.push_back(pose_model(cimg, faces[i]));
 
             // Display it all on the screen
             win.clear_overlay();
             win.set_image(cimg);
-            win.add_overlay(render_face_detections_adaptive(shapes));
+            
+            if (shapes.size() > 0)
+            {
+                if (shapes[0].num_parts() == 68
+                    || shapes[0].num_parts() == 194)
+                    win.add_overlay(render_face_detections_adaptive(shapes));
+                else
+                    win.add_overlay(render_face_detections_noline(shapes));
+            }
         }
     }
     catch(serialization_error& e)

@@ -160,9 +160,14 @@ int main(int argc, char** argv)
         // distances.  Here we are causing the output to scale each face's
         // distances by the interocular distance, as is customary when
         // evaluating face landmarking systems.
-        cout << "mean training error: "<< 
-            test_shape_predictor(sp, images_train, faces_train, get_interocular_distances(faces_train)) << endl;
-        if (faces_train[0][0].num_parts() == 68 || faces_train[0][0].num_parts() == 194)
+        if (faces_train[0][0].num_parts() == 68 
+            || faces_train[0][0].num_parts() == 194)
+        {
+            cout << "mean training error: "<< test_shape_predictor(
+                sp, images_train, faces_train, 
+                get_interocular_distances(faces_train)) << endl;
+        }
+
         cout << "mean training error without rescale distances: "<<
             test_shape_predictor(sp, images_train, faces_train) << endl;
 
@@ -171,9 +176,14 @@ int main(int argc, char** argv)
         // extremely high, but it's still doing quite good.  Moreover, if you
         // train it on one of the large face landmarking datasets you will
         // obtain state-of-the-art results, as shown in the Kazemi paper.
-        cout << "mean testing error:  "<< 
-            test_shape_predictor(sp, images_test, faces_test, get_interocular_distances(faces_test)) << endl;
-        if (faces_test[0][0].num_parts() == 68 || faces_test[0][0].num_parts() == 194)
+        if (faces_test[0][0].num_parts() == 68 
+            || faces_test[0][0].num_parts() == 194)
+        {
+            cout << "mean testing error:  "<< test_shape_predictor(
+                sp, images_test, faces_test,
+                get_interocular_distances(faces_test)) << endl;
+        }
+        
         cout << "mean testing error without rescale distances: "<<
             test_shape_predictor(sp, images_test, faces_test) << endl;
 

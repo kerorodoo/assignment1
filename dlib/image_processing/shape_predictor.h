@@ -341,7 +341,7 @@ namespace dlib
 
 
         template <typename image_type>
-        std::vector<full_object_detection> operator()(
+        full_object_detection operator()(
             const image_type& img,
             const rectangle& rect
         ) const
@@ -349,7 +349,9 @@ namespace dlib
             using namespace impl;
             matrix<float,0,1> current_shape = initial_shape;
             std::vector<float> feature_pixel_values;
-            std::vector<full_object_detection> per_cascade_object_detection;
+            
+            //std::vector<full_object_detection> per_cascade_object_detection;
+            
             for (unsigned long iter = 0; iter < forests.size(); ++iter)
             {
                 extract_feature_pixel_values(img, rect, current_shape, initial_shape,
@@ -360,20 +362,20 @@ namespace dlib
                     current_shape += forests[iter][i](feature_pixel_values, leaf_idx);
 
                 // store cascade shape for present
-                const point_transform_affine tform_to_img = unnormalizing_tform(rect);
-                std::vector<point> parts(current_shape.size()/2);
-                for (unsigned long i = 0; i < parts.size(); ++i)
-                    parts[i] = tform_to_img(location(current_shape, i));
-                per_cascade_object_detection.push_back(full_object_detection(rect, parts));
+                //const point_transform_affine tform_to_img = unnormalizing_tform(rect);
+                //std::vector<point> parts(current_shape.size()/2);
+                //for (unsigned long i = 0; i < parts.size(); ++i)
+                //    parts[i] = tform_to_img(location(current_shape, i));
+                //per_cascade_object_detection.push_back(full_object_detection(rect, parts));
                 // store cascade shape for present
             }
 
             // convert the current_shape into a full_object_detection
-            //const point_transform_affine tform_to_img = unnormalizing_tform(rect);
-            //std::vector<point> parts(current_shape.size()/2);
-            //for (unsigned long i = 0; i < parts.size(); ++i)
-            //    parts[i] = tform_to_img(location(current_shape, i));
-            return per_cascade_object_detection;
+            const point_transform_affine tform_to_img = unnormalizing_tform(rect);
+            std::vector<point> parts(current_shape.size()/2);
+            for (unsigned long i = 0; i < parts.size(); ++i)
+                parts[i] = tform_to_img(location(current_shape, i));
+            return full_object_detection(rect, parts);
         }
 
         template <typename image_type, typename T, typename U>
@@ -1171,7 +1173,7 @@ namespace dlib
                 // any scales.
                 const double scale = scales.size()==0 ? 1 : scales[i][j]; 
 
-                full_object_detection det = sp(images[i], objects[i][j].get_rect()).back();
+                full_object_detection det = sp(images[i], objects[i][j].get_rect());
 
                 for (unsigned long k = 0; k < det.num_parts(); ++k)
                 {
