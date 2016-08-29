@@ -158,10 +158,23 @@ class Model():
         root = tree.getroot()
         shapes = []
 
+        xml_path = os.path.dirname(os.path.realpath(xml_path))
+        sys.stdout.write("\nthe xml dirname:{}\n".format(xml_path))
+
         #  reading the xml and processing string each line in xml
         for image in root.iter('image'):
             for box in image.iter('box'):
-                image_path = image.get('file');
+                image_path = ''
+                #  add checking image_path valid or not
+                if os.path.isfile(image.get('file')):
+                    image_path = image.get('file')
+                elif os.path.isfile(xml_path + "/" + image.get('file')):
+                    image_path = xml_path + "/" + image.get('file')
+                else:
+                    sys.stdout.write(
+                        "\ncan't not found image_path:{}\n".format(
+                        image.get('file')) )
+
                 shape = ShapeObject(image_path, box)
                 for part in box.iter('part'):
                     shape.addlandmark(part, LandmarkStatus.VIEW)
