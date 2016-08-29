@@ -35,6 +35,7 @@
 #include <dlib/gui_widgets.h>
 
 #include <string>
+#include <chrono>
 
 using namespace dlib;
 using namespace std;
@@ -311,6 +312,38 @@ std::vector<image_window::overlay_circle> render_face_detections_noline(
     return circles;
 }
 
+
+std::vector<image_window::overlay_rect> render_face_detections_rect(
+    const std::vector<full_object_detection>& dets,
+    const rgb_pixel color = rgb_pixel(0,255,0)
+)
+{
+    std::vector<image_window::overlay_rect> rects;
+    for (int i = 0; i < dets.size(); i++)
+    {
+        rects.push_back(image_window::overlay_rect(
+            dets[i].get_rect(),
+            color)
+            );
+    }
+    return rects;
+}
+
+std::vector<image_window::overlay_rect> render_face_detections_rect(
+    const std::vector<rectangle>& dets,
+    const rgb_pixel color = rgb_pixel(0,255,0)
+)
+{
+    std::vector<image_window::overlay_rect> rects;
+    for (int i = 0; i < dets.size(); i++)
+    {
+        rects.push_back(image_window::overlay_rect(dets[i], 
+            color, 
+            "face " + std::to_string(i)));
+    }
+    return rects;
+}
+
 //Todo :: get_face_chip_details
 //        made that can work in 194 landmark
 //Issue:: unknown what  Average positions of face points 17-67 doing
@@ -361,26 +394,44 @@ int main(int argc, char** argv)
             std::vector<rectangle> faces = detector(cimg);
             // Find the pose of each face.
             std::vector<full_object_detection> shapes;
+
+            //  time stamp before alignment
+            std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+            //  Get the alignment result for each face. 
             for (unsigned long i = 0; i < faces.size(); ++i)
                 shapes.push_back(pose_model(cimg, faces[i]));
+
+            //  time stamp after alignment
+            std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+            std::cout << "Time difference = " << ( std::chrono::duration_cast<
+                std::chrono::microseconds> (end - begin).count() ) << std::endl;
+
+            // Get the initial cascade of alignment for each face.
+            std::vector<full_object_detection> initial_shapes;
+            for  (unsigned long i = 0; i < faces.size(); ++i)
+                initial_shapes.push_back(
+                    pose_model.get_initial_cascade(faces[i]));
+
 
             // Display it all on the screen
             win.clear_overlay();
             win.set_image(cimg);
-
+            
+            // Draw th rect from face detect result:faces
             if (faces.size() > 0 )
             {
                 rgb_pixel color = rgb_pixel(255, 0, 0);
-                std::vector<image_window::overlay_rect> rects;
-                for (int i = 0; i < faces.size(); i++)
-                {
-
-                    rects.push_back(image_window::overlay_rect(faces[i], 
-                        color,
-                        "face " + std::to_string(i)));
-                }
-                win.add_overlay(rects);
+                win.add_overlay(render_face_detections_rect(faces, color));
             }
+
+            if (initial_shapes.size() > 0)
+            {
+                rgb_pixel color = rgb_pixel(0, 0, 128);
+                win.add_overlay(render_face_detections_noline(initial_shapes, color));
+                win.add_overlay(render_face_detections_rect(initial_shapes, color));
+            }
+
+            // Draw the face alignment result from shapes
             if (shapes.size() > 0)
             {
                 if (shapes[0].num_parts() == 68
@@ -388,6 +439,7 @@ int main(int argc, char** argv)
                     win.add_overlay(render_face_detections_adaptive(shapes));
                 else
                     win.add_overlay(render_face_detections_noline(shapes));
+                win.add_overlay(render_face_detections_rect(initial_shapes));
             }
         }
     }

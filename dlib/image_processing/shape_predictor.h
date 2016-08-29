@@ -420,9 +420,14 @@ namespace dlib
 
         // this function is tell the user where the inital shape is
         // add by chin
-        matrix<float> get_initial_shape()
+        full_object_detection get_initial_cascade(const rectangle& rect)
         {
-            return reshape(initial_shape, initial_shape.size()/2, 2);
+            using namespace impl;
+            const point_transform_affine tform_to_img = unnormalizing_tform(rect);
+            std::vector<point> parts(initial_shape.size()/2);
+            for (unsigned long i = 0; i < parts.size(); ++i)
+                parts[i] = tform_to_img(location(initial_shape, i));
+            return full_object_detection(rect, parts);
         }
 
         // this function is tell the user wherer the bounding box is
