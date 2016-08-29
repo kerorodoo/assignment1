@@ -418,6 +418,26 @@ namespace dlib
 
         friend void deserialize (shape_predictor& item, std::istream& in);
 
+        // this function is tell the user where the inital shape is
+        // add by chin
+        matrix<float> get_initial_shape()
+        {
+            return reshape(initial_shape, initial_shape.size()/2, 2);
+        }
+
+        // this function is tell the user wherer the bounding box is
+        // add by chin
+        rectangle get_bounding_box(double padding)
+        {
+            matrix<float> temp = reshape(initial_shape, initial_shape.size()/2, 2);
+            const double min_x = min(colm(temp,0))-padding;
+            const double min_y = min(colm(temp,1))-padding;
+            const double max_x = max(colm(temp,0))+padding;
+            const double max_y = max(colm(temp,1))+padding;
+            return rectangle(min_x, min_y, max_x, max_y);
+        }
+        
+
     private:
         matrix<float,0,1> initial_shape;
         std::vector<std::vector<impl::regression_tree> > forests;

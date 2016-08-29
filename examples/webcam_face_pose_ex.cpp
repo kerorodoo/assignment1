@@ -34,6 +34,8 @@
 #include <dlib/image_processing.h>
 #include <dlib/gui_widgets.h>
 
+#include <string>
+
 using namespace dlib;
 using namespace std;
 
@@ -365,7 +367,20 @@ int main(int argc, char** argv)
             // Display it all on the screen
             win.clear_overlay();
             win.set_image(cimg);
-            
+
+            if (faces.size() > 0 )
+            {
+                rgb_pixel color = rgb_pixel(255, 0, 0);
+                std::vector<image_window::overlay_rect> rects;
+                for (int i = 0; i < faces.size(); i++)
+                {
+
+                    rects.push_back(image_window::overlay_rect(faces[i], 
+                        color,
+                        "face " + std::to_string(i)));
+                }
+                win.add_overlay(rects);
+            }
             if (shapes.size() > 0)
             {
                 if (shapes[0].num_parts() == 68
