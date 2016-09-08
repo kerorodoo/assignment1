@@ -12,6 +12,9 @@
 #include "../console_progress_indicator.h"
 #include "../statistics.h"
 #include <utility>
+#include <typeinfo>
+#include <math.h>   //std::abs, std::sqrt
+#include <algorithm>    //std::find
 
 namespace dlib
 {
@@ -38,7 +41,18 @@ namespace dlib
                 dlib::deserialize(item.idx2, in);
                 dlib::deserialize(item.thresh, in);
             }
+
         };
+
+        inline bool operator==(
+            const split_feature& lhs, const split_feature& rhs)
+        { 
+            if (lhs.idx1 == rhs.idx1
+                    && lhs.idx2 == rhs.idx2
+                    && lhs.thresh == rhs.thresh)
+                return true;
+            return false;
+        }
 
 
         // a tree is just a std::vector<impl::split_feature>.  We use this function to navigate the
@@ -288,6 +302,9 @@ namespace dlib
 
 // ----------------------------------------------------------------------------------------
 
+
+// ----------------------------------------------------------------------------------------
+
     class shape_predictor
     {
     public:
@@ -480,6 +497,7 @@ namespace dlib
             should be in the range [-128,128]).
         !*/
     public:
+        enum train_method {decision_tree, random_fern};
 
         shape_predictor_trainer (
         )
@@ -494,6 +512,21 @@ namespace dlib
             _num_test_splits = 20;
             _feature_pool_region_padding = 0;
             _verbose = false;
+            _method = train_method::decision_tree;
+        }
+
+        void set_method (
+            const train_method method
+        )
+        {
+            DLIB_CASSERT(
+                method == train_method::decision_tree || method == train_method::random_fern,
+                "\t void shape_predictor_trainer::set_method()"
+                << "\n\t Invalid inputs were given to this function. "
+                << "\n\t method:  " << method
+            );
+
+            _method = method;
         }
 
         unsigned long get_cascade_depth (
@@ -659,6 +692,7 @@ namespace dlib
                 << "\n\t images.size():  " << images.size() 
                 << "\n\t objects.size(): " << objects.size() 
             );
+
             // make sure the objects agree on the number of parts and that there is at
             // least one full_object_detection. 
             unsigned long num_parts = 0;
@@ -704,8 +738,6 @@ namespace dlib
 
 
 
-
-
             rnd.set_seed(get_random_seed());
 
             std::vector<training_sample> samples;
@@ -736,10 +768,26 @@ namespace dlib
                         deltas, samples[i].feature_pixel_values);
                 }
 
+                //  chin
+                //  prepare covariance
+                //  as variable generate_feature::cov
+                generate_feature(samples, pixel_coordinates[cascade]);
+                return shape_predictor(initial_shape, forests, pixel_coordinates);
+
                 // Now start building the trees at this cascade level.
                 for (unsigned long i = 0; i < get_num_trees_per_cascade_level(); ++i)
                 {
                     forests[cascade].push_back(make_regression_tree(samples, pixel_coordinates[cascade]));
+
+                    //
+                    //  forests[cascade].push_back(
+                    //      make_regression_fern(samples
+                    //      , pixel_coordinates[cascades]));
+                    //  the function make_regression_fern will call
+                    //  generate_feature: select the feature
+                    //      accroding correlation (yproj,pn-pm)
+                    //  then construct fern in tree struct
+                    //
 
                     if (_verbose)
                     {
@@ -1009,6 +1057,171 @@ namespace dlib
         }
 
 
+        impl::split_feature generate_feature (
+            const std::vector<training_sample>& samples,
+            const std::vector<dlib::vector<float,2> >& pixel_coordinates
+        ) const
+        {
+            std::cout << "\timpl::split_feature generate_feature() \n" << std::endl;
+            std::vector<impl::split_feature> feats;
+
+
+            // for densities: 
+            // each row is the pixel densities at each candidate pixels for an image
+            std::vector<std::vector<float> > densities;
+            densities.resize(get_feature_pool_size());
+            
+            for (unsigned long i = 0; i<samples.size(); ++i)
+            {
+                for (unsigned long j = 0; j<get_feature_pool_size(); ++j)
+                {
+                    densities[j].push_back(samples[i].feature_pixel_values[j]);
+                }
+            }
+
+            DLIB_CASSERT( densities.size() == get_feature_pool_size(),
+                "\t impl::split_feature generate_feature()"
+                << "\n\t exception variable status were in this function. "
+                << "\n\t expection: densities.size():  " << densities.size()
+                << " == get_feature_pool_size(): " << get_feature_pool_size()
+                );
+            DLIB_CASSERT( densities[0].size() == samples.size(),
+                "\t impl::split_feature generate_feature()"
+                << "\n\t exception variable status were in this function. "
+                << "\n\t expection: densities[0].size():  " 
+                << densities[0].size()                
+                << " == samples.size(): " << samples.size()
+                );
+
+
+            // calculate the covariance between 
+            // densities at each candidate pixels
+            matrix<double> cov(get_feature_pool_size(), get_feature_pool_size());
+
+            for (unsigned long i = 0; i < get_feature_pool_size(); ++i)
+            {
+                for (unsigned long j = 0; j < get_feature_pool_size(); ++j)
+                {
+                    double cov_result = covariance(densities[i], densities[j]);
+
+                    cov(i,j) = cov_result;
+                    cov(j,i) = cov_result;
+                }
+            }
+            
+
+            do {
+            // random projection regression_targets with random projection matrix
+            //   build a random projection matrix
+            matrix<double> proj(
+                samples[0].target_shape.nr(),
+                samples[0].target_shape.nc());
+
+            for (long r = 0; r < proj.nr(); ++r)
+            {
+                for (long c = 0; c < proj.nc(); ++c)
+                {
+                    proj(r,c) = rnd.get_random_gaussian();
+                }
+            }
+
+            proj = normalize(proj);
+            
+            //  project regression targets along the random projection matrix
+            std::vector<double> projection_result(samples.size(), 0);
+
+            for (unsigned long i = 0; i < samples.size(); ++i)
+            {
+                double yproj = 0;
+
+                yproj = sum( pointwise_multiply(matrix_cast<double>(
+                    samples[i].target_shape - samples[i].current_shape)
+                    , proj)
+                    );
+
+                projection_result[i] = yproj;
+            }
+
+            // calculate the covariance between
+            // densities of candidate pixel with projection_result
+            matrix<double> cov_project_densities(get_feature_pool_size(), 1);
+
+            for (unsigned long i = 0; i < get_feature_pool_size(); ++i)
+            {
+                std::vector<double> densities_d(densities[i].begin()
+                    , densities[i].end());
+                cov_project_densities(i) =  covariance(
+                    densities_d, projection_result);
+            }
+
+            
+            DLIB_CASSERT( cov_project_densities.nr() == get_feature_pool_size()
+                && cov_project_densities.nc() == 1,
+                "\t impl::split_feature generate_feature()"
+                << "\n\t exception variable status were in this function. "
+                << "\n\t expection: cov_project_densities.size():  " 
+                << cov_project_densities.size()                
+                << " == " << get_feature_pool_size() << " x 1"
+                );
+
+
+            // find feature by max correlation
+            double max_correlation = -1;
+            int max_pixel_index_1 = 0;
+            int max_pixel_index_2 = 0;
+
+            impl::split_feature feat;
+            for (unsigned long j = 0; j < get_feature_pool_size(); ++j)
+            {
+                for (unsigned long k = 0; k < get_feature_pool_size(); ++k)
+                {
+                    double temp1 = cov(j,j) + cov(k,k) - 2 * cov(j,k);
+                    double temp = (
+                        cov_project_densities(j) 
+                        - cov_project_densities(k) ) / std::sqrt(temp1);
+
+                    if ( std::abs(temp)>max_correlation )
+                    {
+                        max_correlation = temp;
+                        max_pixel_index_1 = j;
+                        max_pixel_index_2 = k;
+                    }
+                }
+            }
+
+            feat.idx1 = max_pixel_index_1;
+            feat.idx2 = max_pixel_index_2;
+
+            double max_diff = -1;
+            // get threshold for this pair
+            for (unsigned long i = 0; i < samples.size(); ++i)
+            {
+                double temp = densities[max_pixel_index_1][i] 
+                    - densities[max_pixel_index_2][i];
+                if ( std::abs(temp) > max_diff)
+                    feat.thresh = (float)std::abs(temp);
+            }
+            
+            //  avoid the dupicate feat
+            std::vector<impl::split_feature>::iterator it;
+            it = std::find (feats.begin(), feats.end(), feat);
+            if (it != feats.end())
+                continue;
+            else
+            {
+                std::cout << "\tselected: feat( " << feat.idx1 
+                    << "," << feat.idx2 << " ) with thresh:" 
+                    << feat.thresh << std::endl;
+                feats.push_back(feat);
+            }
+
+            } while (feats.size() < get_tree_depth());
+
+            std::cout << "\timpl::split_feature generate_feature() \n" << std:: endl;
+
+
+            return feats[0];
+        }
 
         matrix<float,0,1> populate_training_sample_shapes(
             const std::vector<std::vector<full_object_detection> >& objects,
@@ -1140,6 +1353,7 @@ namespace dlib
         unsigned long _num_test_splits;
         double _feature_pool_region_padding;
         bool _verbose;
+        train_method  _method;
     };
 
 // ----------------------------------------------------------------------------------------

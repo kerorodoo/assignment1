@@ -239,49 +239,49 @@ std::vector<image_window::overlay_line> render_face_detections_adaptive(
            const full_object_detection& d= dets[i];
            // Around Chin. Ear to Ear
            std::vector<int> set = get_around_chin_ear_to_ear_part(dets[i].num_parts());
-           for (int pen = 1; pen < set.size(); pen++)
+           for (unsigned long pen = 1; pen < set.size(); pen++)
                lines.push_back(image_window::overlay_line(d.part(set[pen]), d.part(set[pen-1]), color));
 
            // Line on top of nose
            set = get_top_of_nose(dets[i].num_parts());
-           for (int pen = 1; pen < set.size(); pen++)
+           for (unsigned long pen = 1; pen < set.size(); pen++)
                lines.push_back(image_window::overlay_line(d.part(set[pen]), d.part(set[pen-1]), color));
 
            // left eyebrow
            set = get_left_eyebrow(dets[i].num_parts());
-           for (int pen = 1; pen < set.size(); pen++)
+           for (unsigned long pen = 1; pen < set.size(); pen++)
                lines.push_back(image_window::overlay_line(d.part(set[pen]), d.part(set[pen-1]), color));
 
            // Right eyebrow
            set = get_right_eyebrow(dets[i].num_parts());
-           for (int pen = 1; pen < set.size(); pen++)
+           for (unsigned long pen = 1; pen < set.size(); pen++)
                lines.push_back(image_window::overlay_line(d.part(set[pen]), d.part(set[pen-1]), color));
 
            // Bottom part of the nose
            set = get_bottom_of_nose(dets[i].num_parts());
-           for (int pen = 1; pen < set.size(); pen++)
+           for (unsigned long pen = 1; pen < set.size(); pen++)
                lines.push_back(image_window::overlay_line(d.part(set[pen]), d.part(set[pen-1]), color));
 
            // Line from the nose to the bottom part above already done above step
 
            // Left eye
            set = get_left_eye(dets[i].num_parts());
-           for (int pen = 1; pen < set.size(); pen++)
+           for (unsigned long pen = 1; pen < set.size(); pen++)
                lines.push_back(image_window::overlay_line(d.part(set[pen]), d.part(set[pen-1]), color));
 
            // Right eye
            set = get_right_eye(dets[i].num_parts());
-           for (int pen = 1; pen < set.size(); pen++)
+           for (unsigned long pen = 1; pen < set.size(); pen++)
                lines.push_back(image_window::overlay_line(d.part(set[pen]), d.part(set[pen-1]), color));
 
            // Lips outer part
            set = get_lips_outer_part(dets[i].num_parts());
-           for (int pen = 1; pen < set.size(); pen++)
+           for (unsigned long pen = 1; pen < set.size(); pen++)
                lines.push_back(image_window::overlay_line(d.part(set[pen]), d.part(set[pen-1]), color));
 
            // Lips inside part
            set = get_lips_inside_part(dets[i].num_parts());
-           for (int pen = 1; pen < set.size(); pen++)
+           for (unsigned long pen = 1; pen < set.size(); pen++)
                lines.push_back(image_window::overlay_line(d.part(set[pen]), d.part(set[pen-1]), color));
          }
 return lines;
@@ -299,7 +299,7 @@ std::vector<image_window::overlay_circle> render_face_detections_noline(
     {
         const full_object_detection& d = dets[i];
 
-        for (int pen = 0; pen < d.num_parts(); pen++)
+        for (unsigned long pen = 0; pen < d.num_parts(); pen++)
         {
             unsigned long radius = 5;
             point center(d.part(pen));
@@ -319,7 +319,7 @@ std::vector<image_window::overlay_rect> render_face_detections_rect(
 )
 {
     std::vector<image_window::overlay_rect> rects;
-    for (int i = 0; i < dets.size(); i++)
+    for (unsigned long i = 0; i < dets.size(); i++)
     {
         rects.push_back(image_window::overlay_rect(
             dets[i].get_rect(),
@@ -335,7 +335,7 @@ std::vector<image_window::overlay_rect> render_face_detections_rect(
 )
 {
     std::vector<image_window::overlay_rect> rects;
-    for (int i = 0; i < dets.size(); i++)
+    for (unsigned long i = 0; i < dets.size(); i++)
     {
         rects.push_back(image_window::overlay_rect(dets[i], 
             color, 

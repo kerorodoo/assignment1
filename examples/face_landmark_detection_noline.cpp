@@ -120,7 +120,7 @@ int main(int argc, char** argv)
             win.set_image(img);
             for (unsigned long j = 0; j < dets.size(); j++)
             {
-                int per_det_shapes = shapes.size()/dets.size();
+                unsigned long per_det_shapes = shapes.size()/dets.size();
                 for (unsigned long i = 0; i < per_det_shapes; i++)
                 {
                     full_object_detection shape_temp = shapes[j*dets.size()+i];

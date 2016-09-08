@@ -19,7 +19,9 @@ include(../dlib/cmake)
 #TARGET_LINK_LIBRARIES(assignment_learning_ex dlib)
 
 
-
+SET(CMAKE_BUILD_TYPE "Debug")
+SET(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -Wall -g2 -ggdb")
+SET(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -O3 -Wall")
 
 # Since there are a lot of examples I'm going to use a macro to simply this
 # CMakeLists.txt file.  However, usually you will create only one executable in
@@ -53,7 +55,9 @@ if (OpenCV_FOUND)
    include_directories(${OpenCV_INCLUDE_DIRS})
 
    ADD_EXECUTABLE(webcam_face_pose_ex webcam_face_pose_ex.cpp)
+   ADD_EXECUTABLE(unitest unitest.cpp)
    TARGET_LINK_LIBRARIES(webcam_face_pose_ex dlib ${OpenCV_LIBS} )
+   TARGET_LINK_LIBRARIES(unitest dlib ${OpenCV_LIBS} )
 else()
    message("OpenCV not found, so we won't build the webcam_face_pose_ex example.")
 endif()
