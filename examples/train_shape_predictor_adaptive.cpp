@@ -132,17 +132,22 @@ int main(int argc, char** argv)
         trainer.set_tree_depth( std::stoi( trainer_tree_depth ) );
         trainer.set_lambda( std::stof( trainer_lambda ) );
         trainer.set_num_test_splits( std::stoi( trainer_num_test_splits ) );
-        
-        cout << "\ntrainer setting oversampe amount: " 
+
+        // setting training method
+        trainer.set_method(shape_predictor_trainer::train_method::random_fern);
+
+        cout << "\n\ttrainer setting oversampe amount: " 
              << trainer.get_oversampling_amount() << endl;
-        cout << "\ntrainer setting nu: "
+        cout << "\ttrainer setting nu: "
              << trainer.get_nu() << endl;
-        cout << "\ntrainer setting tree depth: " 
+        cout << "\ttrainer setting tree depth: " 
              << trainer.get_tree_depth() << endl;
-        cout << "\ntrainer setting lambda: "
+        cout << "\ttrainer setting lambda: "
              << trainer.get_lambda() << endl;
-        cout << "\ntrainer setting num_test_splits: "
+        cout << "\ttrainer setting num_test_splits: "
              << trainer.get_num_test_splits() << endl;
+        cout << "\ttrainer setting train method: "
+             << trainer.get_method() << endl;
 
 
         // Tell the trainer to print status messages to the console so we can

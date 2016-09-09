@@ -528,6 +528,11 @@ namespace dlib
 
             _method = method;
         }
+        
+        train_method get_method ()
+        {
+            return _method;
+        }
 
         unsigned long get_cascade_depth (
         ) const { return _cascade_depth; }
@@ -735,6 +740,12 @@ namespace dlib
                 << "\n\t Each part must appear at least once in this training data.  That is, "
                 << "\n\t you can't have a part that is always set to OBJECT_PART_NOT_PRESENT."
             );
+            DLIB_CASSERT(_method == train_method::decision_tree
+                || _method == train_method::random_fern,
+                "\t shape_predictor shape_predictor_trainer::train()"
+                << "\n\t exception: _method value must be train_method::decision_tree"
+                << "\n\t or train_method::random_fern. "
+            );
 
 
 
@@ -768,26 +779,19 @@ namespace dlib
                         deltas, samples[i].feature_pixel_values);
                 }
 
-                //  chin
-                //  prepare covariance
-                //  as variable generate_feature::cov
-                generate_feature(samples, pixel_coordinates[cascade]);
-                return shape_predictor(initial_shape, forests, pixel_coordinates);
 
                 // Now start building the trees at this cascade level.
                 for (unsigned long i = 0; i < get_num_trees_per_cascade_level(); ++i)
                 {
-                    forests[cascade].push_back(make_regression_tree(samples, pixel_coordinates[cascade]));
+                    if (_method == train_method::decision_tree)
+                        forests[cascade].push_back(
+                            make_regression_tree(samples, pixel_coordinates[cascade]));
 
-                    //
-                    //  forests[cascade].push_back(
-                    //      make_regression_fern(samples
-                    //      , pixel_coordinates[cascades]));
-                    //  the function make_regression_fern will call
-                    //  generate_feature: select the feature
-                    //      accroding correlation (yproj,pn-pm)
-                    //  then construct fern in tree struct
-                    //
+                    // chin add fern
+                    if (_method == train_method::random_fern)
+                        forests[cascade].push_back(
+                            make_regression_fern(samples, pixel_coordinates[cascade]));
+                    
 
                     if (_verbose)
                     {
@@ -1056,15 +1060,117 @@ namespace dlib
             return i;
         }
 
-
-        impl::split_feature generate_feature (
-            const std::vector<training_sample>& samples,
+        impl::regression_tree make_regression_fern (
+            std::vector<training_sample>& samples,
             const std::vector<dlib::vector<float,2> >& pixel_coordinates
         ) const
         {
-            std::cout << "\timpl::split_feature generate_feature() \n" << std::endl;
-            std::vector<impl::split_feature> feats;
+            using namespace impl;
 
+            std::deque<std::pair<unsigned long, unsigned long> > parts;
+            parts.push_back(std::make_pair(0, (unsigned long)samples.size()));
+
+            impl::regression_tree tree;
+
+            // walk the tree in breadth first order
+            const unsigned long num_split_nodes = static_cast<unsigned long>(std::pow(2.0, (double)get_tree_depth())-1);
+            std::vector<matrix<float,0,1> > sums(num_split_nodes*2+1);
+            for (unsigned long i = 0; i < samples.size(); ++i)
+                sums[0] += samples[i].target_shape - samples[i].current_shape;
+
+
+            std::vector<impl::split_feature> feats;
+            
+            // generte features accroding samples
+            generate_features(samples, feats);
+
+            DLIB_CASSERT( feats.size() == get_tree_depth(),
+                "\t impl::regression_tree make_regression_fern()"
+                << "\n\t exception variable status were in this function. "
+                << "\n expection: feats.size(): " << feats.size()
+                << " == get_tree_depth(): " << get_tree_depth()
+                );
+
+            for (unsigned long i = 1; i <= get_tree_depth(); ++i)
+            {
+                while (tree.splits.size() 
+                    < static_cast<unsigned long>(std::pow(2.0, (double)i)-1))
+                {
+                    tree.splits.push_back(feats[i-1]);
+                }
+            }
+
+            DLIB_CASSERT( tree.splits.size() == num_split_nodes,
+                "\t impl::regression_tree make_regression_fern()"
+                << "\n\t exception variable status were in this function. "
+                << "\n expection: tree.splits.size(): " << tree.splits.size()
+                << " == num_split_nodes: " << num_split_nodes
+                );
+
+            for (unsigned long i = 0; i < num_split_nodes; ++i) 
+            {
+                std::pair<unsigned long,unsigned long> range = parts.front();
+                parts.pop_front();
+
+                const impl::split_feature split = tree.splits[i];
+
+                const unsigned long mid = partition_samples(split, samples, range.first, range.second); 
+
+                parts.push_back(std::make_pair(range.first, mid));
+                parts.push_back(std::make_pair(mid, range.second));
+
+            }
+
+            // Now all the parts contain the ranges for the leaves so we can use them to
+            // compute the average leaf values.
+            matrix<float,0,1> present_counts(samples[0].target_shape.size());
+            tree.leaf_values.resize(parts.size());
+            for (unsigned long i = 0; i < parts.size(); ++i)
+            {
+                // Get the present counts for each dimension so we can divide each
+                // dimension by the number of observations we have on it to find the mean
+                // displacement in each leaf. 
+                present_counts = 0;
+                for (unsigned long j = parts[i].first; j < parts[i].second; ++j)
+                    present_counts += samples[j].present;
+                present_counts = dlib::reciprocal(present_counts);
+                
+                // now compute the sum of vector of that bin
+                matrix<float,0,1> sum;
+                for (unsigned long j = parts[i].first; j < parts[i].second; ++j)
+                    sum += samples[j].target_shape-samples[j].current_shape;
+
+                if (parts[i].second != parts[i].first)
+                    tree.leaf_values[i] = pointwise_multiply(present_counts,sum*get_nu());
+                else
+                    tree.leaf_values[i] = zeros_matrix(samples[0].target_shape);
+
+                // now adjust the current shape based on these predictions
+                for (unsigned long j = parts[i].first; j < parts[i].second; ++j)
+                {
+                    samples[j].current_shape += tree.leaf_values[i];
+                    // For parts that aren't present in the training data, we just make
+                    // sure that the target shape always matches and therefore gives zero
+                    // error.  So this makes the algorithm simply ignore non-present
+                    // landmarks.
+                    for (long k = 0; k < samples[j].present.size(); ++k)
+                    {
+                        // if this part is not present
+                        if (samples[j].present(k) == 0)
+                            samples[j].target_shape(k) = samples[j].current_shape(k);
+                    }
+                }
+            }
+
+            return tree;
+        }
+
+
+        void generate_features (
+            const std::vector<training_sample>& samples,
+            std::vector<dlib::impl::split_feature>& feats
+        ) const
+        {
 
             // for densities: 
             // each row is the pixel densities at each candidate pixels for an image
@@ -1080,13 +1186,13 @@ namespace dlib
             }
 
             DLIB_CASSERT( densities.size() == get_feature_pool_size(),
-                "\t impl::split_feature generate_feature()"
+                "\t void generate_features ()"
                 << "\n\t exception variable status were in this function. "
                 << "\n\t expection: densities.size():  " << densities.size()
                 << " == get_feature_pool_size(): " << get_feature_pool_size()
                 );
             DLIB_CASSERT( densities[0].size() == samples.size(),
-                "\t impl::split_feature generate_feature()"
+                "\t void generate_features ()"
                 << "\n\t exception variable status were in this function. "
                 << "\n\t expection: densities[0].size():  " 
                 << densities[0].size()                
@@ -1155,9 +1261,10 @@ namespace dlib
             }
 
             
-            DLIB_CASSERT( cov_project_densities.nr() == get_feature_pool_size()
+            DLIB_CASSERT( 
+                (unsigned long)cov_project_densities.nr() ==(unsigned long)get_feature_pool_size()
                 && cov_project_densities.nc() == 1,
-                "\t impl::split_feature generate_feature()"
+                "\t void generate_features ()"
                 << "\n\t exception variable status were in this function. "
                 << "\n\t expection: cov_project_densities.size():  " 
                 << cov_project_densities.size()                
@@ -1217,10 +1324,6 @@ namespace dlib
 
             } while (feats.size() < get_tree_depth());
 
-            std::cout << "\timpl::split_feature generate_feature() \n" << std:: endl;
-
-
-            return feats[0];
         }
 
         matrix<float,0,1> populate_training_sample_shapes(
