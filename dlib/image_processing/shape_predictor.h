@@ -1127,12 +1127,14 @@ namespace dlib
             tree.leaf_values.resize(parts.size());
             for (unsigned long i = 0; i < parts.size(); ++i)
             {
+                const double lambda = get_lambda();
                 // Get the present counts for each dimension so we can divide each
                 // dimension by the number of observations we have on it to find the mean
                 // displacement in each leaf. 
                 present_counts = 0;
                 for (unsigned long j = parts[i].first; j < parts[i].second; ++j)
                     present_counts += samples[j].present;
+                present_counts = present_counts + lambda;
                 present_counts = dlib::reciprocal(present_counts);
                 
                 // now compute the sum of vector of that bin
@@ -1306,8 +1308,10 @@ namespace dlib
                 double temp = densities[max_pixel_index_1][i] 
                     - densities[max_pixel_index_2][i];
                 if ( std::abs(temp) > max_diff)
-                    feat.thresh = (float)std::abs(temp);
+                    max_diff = std::abs(temp);
             }
+
+            feat.thresh = rnd.get_random_double() * (0.4 * max_diff) - (0.2 * max_diff);
             
             //  avoid the dupicate feat
             std::vector<impl::split_feature>::iterator it;
