@@ -1137,12 +1137,11 @@ namespace dlib
                 
                 // now compute the sum of vector of that bin
                 matrix<float,0,1> sum;
-                unsigned long sum_cnt = (parts[i].second - parts[i].first) + 1;
                 for (unsigned long j = parts[i].first; j < parts[i].second; ++j)
-                    sum += (1 / sum_cnt) * (samples[j].target_shape - samples[j].current_shape);
+                    sum += samples[j].target_shape - samples[j].current_shape;
 
                 if (parts[i].second != parts[i].first)
-                    tree.leaf_values[i] = pointwise_multiply(present_counts,sum*get_nu());
+                    tree.leaf_values[i] = pointwise_multiply(present_counts, sum * get_nu());
                 else
                     tree.leaf_values[i] = zeros_matrix(samples[0].target_shape);
 
