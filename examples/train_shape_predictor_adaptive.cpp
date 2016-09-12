@@ -51,12 +51,12 @@ int main(int argc, char** argv)
         // thing we do is load that dataset.  This means you need to supply the
         // path to this faces folder as a command line argument so we will know
         // where it is.
-        if (argc != 2 && argc != 7)
+        if (argc != 2 && argc != 9)
         {
             cout << "Give the path to the examples/faces directory as the argument to this" << endl;
             cout << "program.  For example, if you are in the examples folder then execute " << endl;
             cout << "this program by running: " << endl;
-            cout << "   ./train_shape_predictor_adaptive faces [oversampling_amount] [nu] [tree_depth] [lambda] [num_test_splits]" << endl;
+            cout << "   ./train_shape_predictor_adaptive faces [oversampling_amount] [nu] [tree_depth] [lambda] [num_test_splits] [cascade_depth] [feature_pool_size]" << endl;
             
             cout << endl;
             return 0;
@@ -67,15 +67,19 @@ int main(int argc, char** argv)
         std::string trainer_tree_depth = "5";
         std::string trainer_lambda = "0.1";
         std::string trainer_num_test_splits = "20";
+        std::string trainer_cascade_depth = "10";
+        std::string trainer_feature_pool_size = "400";
         
         //setting the trainer parameters
-        if (argc == 7)
+        if (argc == 9)
         {
             trainer_oversampling_amount = argv[2];
             trainer_nu = argv[3];
             trainer_tree_depth = argv[4];
             trainer_lambda = argv[5];
             trainer_num_test_splits = argv[6];
+            trainer_cascade_depth = argv[7];
+            trainer_feature_pool_size = argv[8];
         }
         
         const std::string faces_directory = argv[1];
@@ -132,6 +136,9 @@ int main(int argc, char** argv)
         trainer.set_tree_depth( std::stoi( trainer_tree_depth ) );
         trainer.set_lambda( std::stof( trainer_lambda ) );
         trainer.set_num_test_splits( std::stoi( trainer_num_test_splits ) );
+        trainer.set_cascade_depth( std::stoi( trainer_cascade_depth ) );
+        trainer.set_feature_pool_size( std::stoi( trainer_feature_pool_size ) );
+
 
         // setting training method
         trainer.set_method(shape_predictor_trainer::train_method::random_fern);
@@ -146,9 +153,15 @@ int main(int argc, char** argv)
              << trainer.get_lambda() << endl;
         cout << "\ttrainer setting num_test_splits: "
              << trainer.get_num_test_splits() << endl;
+        cout << "\ttrainer setting cascade_depth: "
+             << trainer.get_cascade_depth() << endl;
+        cout << "\ttrainer setting feature pool size: "
+             << trainer.get_feature_pool_size() << endl;
+        
         cout << "\ttrainer setting train method: "
              << trainer.get_method() << endl;
 
+        
 
         // Tell the trainer to print status messages to the console so we can
         // see how long the training will take.
