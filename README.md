@@ -23,6 +23,7 @@
 ```
 #### 2. python/py_landmark_editor.py and py_landmark_editor_model.py
 ######  this application is using for create dataset(.xml) from exist dataset. After edit landmark annotation by this application we can export it to new xml as dataset for dlib.
+######  required: skimage, imagetk
 ######  usage:
 ```
     >python py_landmark_editor.py [path_of_xml_file]
