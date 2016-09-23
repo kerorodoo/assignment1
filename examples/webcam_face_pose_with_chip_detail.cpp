@@ -34,6 +34,9 @@
 #include <dlib/image_processing.h>
 #include <dlib/gui_widgets.h>
 
+#include <dlib/image_transforms/interpolation.h>
+// for chip_detail
+
 #include <string>
 #include <chrono>
 
@@ -347,6 +350,55 @@ std::vector<image_window::overlay_rect> render_face_detections_rect(
 //Todo :: get_face_chip_details
 //        made that can work in 194 landmark
 //Issue:: unknown what  Average positions of face points 17-67 doing
+chip_details get_face_chip_details (
+    const full_object_detection& final_det,
+    const full_object_detection& init_det,
+    const unsigned long size = 200,
+    const double padding = 0.2
+    )
+{
+    DLIB_CASSERT(final_det.num_parts() == init_det.num_parts(),
+            "\t chip_details get_face_chip_details()"
+            << "\n\t Invalid inputs were given to this function."
+            << "\n\t final_det.num_parts: " << final_det.num_parts()
+            << "\n\t init_det.num_parts: " << init_det.num_parts()
+            );
+
+
+    std::vector<dlib::vector<double,2> > from_points, to_points;
+    for (unsigned long i = 0; i < final_det.num_parts(); i++)
+    {
+            dlib::vector<double,2> p;
+            double x = ( 
+                static_cast<double>( init_det.part(i).x() )
+                - static_cast<double>( init_det.get_rect().left() ) 
+                ) / static_cast<double>( init_det.get_rect().width() );
+            double y = ( 
+                static_cast<double>( init_det.part(i).y() )
+                - static_cast<double>( init_det.get_rect().top() ) 
+                ) / static_cast<double>( init_det.get_rect().height() );
+
+            p.x() = (padding + x) / (2*padding+1);
+            p.y() = (padding + y) / (2*padding+1);
+            from_points.push_back(p * size);
+            to_points.push_back(final_det.part(i));
+    }
+    return chip_details(from_points, to_points, chip_dims(size,size));
+}
+
+std::vector<chip_details> get_face_chip_details (
+    const std::vector<full_object_detection>& final_dets,
+    const std::vector<full_object_detection>& init_dets,
+    const unsigned long size = 200,
+    const double padding = 0.2
+    )
+{
+    std::vector<chip_details> res;
+    res.reserve(final_dets.size());
+    for (unsigned long i = 0; i < final_dets.size(); ++i)
+        res.push_back(get_face_chip_details(final_dets[i], init_dets[i], size, padding));
+    return res;
+}
 
 
 //----------------------------------------------------------------------------------------
@@ -372,7 +424,7 @@ int main(int argc, char** argv)
             cout << "Call this program like this:" << endl;
             cout << "./webcam_face_pose_ex shape_predictor_68_face_landmarks.dat faces/*.jpg" << endl;
         }
-        image_window win;
+        image_window win, win_faces;
 
         // Load face detection and pose estimation models.
         frontal_face_detector detector = get_frontal_face_detector();
@@ -444,6 +496,18 @@ int main(int argc, char** argv)
                     win.add_overlay(render_face_detections_noline(shapes));
                 win.add_overlay(render_face_detections_rect(initial_shapes));
             }
+
+            // display the chip detail of faces
+            dlib::array<array2d<rgb_pixel> > face_chips;
+            extract_image_chips(
+                cimg, 
+                get_face_chip_details(shapes, 
+                    initial_shapes,
+                    200,
+                    0.1), 
+                face_chips);
+            win_faces.set_image(tile_images(face_chips));
+            
         }
     }
     catch(serialization_error& e)
