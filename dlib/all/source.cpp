@@ -58,6 +58,7 @@
 #include "../threads/threads_kernel_2.cpp"
 #include "../threads/threads_kernel_shared.cpp"
 #include "../threads/thread_pool_extension.cpp"
+#include "../threads/async.cpp"
 #include "../timer/timer.cpp"
 #include "../stack_trace.cpp"
 

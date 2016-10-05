@@ -39,7 +39,7 @@ if (CMAKE_VERSION VERSION_LESS "3.1.2")
          set(COMPILER_CAN_DO_CPP_11 1)
       endif()
    else()
-      # Since we don't know what compiler this is ust try to build a c++11 project and see if it compiles.
+      # Since we don't know what compiler this is just try to build a c++11 project and see if it compiles.
       message(STATUS "Building a C++11 test project to see if your compiler supports C++11")
       try_compile(test_for_cpp11_worked ${PROJECT_BINARY_DIR}/cpp11_test_build 
          ${CMAKE_CURRENT_LIST_DIR}/test_for_cpp11 cpp11_test)
@@ -50,17 +50,19 @@ if (CMAKE_VERSION VERSION_LESS "3.1.2")
          message(STATUS "*** Your compiler failed to build a C++11 project, so dlib won't use C++11 features.***")
       endif()
    endif()
-else()
+elseif(NOT MSVC14)  # Visual Studio 14 reports that it supports C++11 but it really doesn't :(
+
    # Set a flag if the compiler you are using is capable of providing C++11 features.
-   if (";${CMAKE_CXX_COMPILE_FEATURES};" MATCHES ";cxx_rvalue_references;" AND
-       ";${CMAKE_CXX_COMPILE_FEATURES};" MATCHES ";cxx_variadic_templates;" AND
-       ";${CMAKE_CXX_COMPILE_FEATURES};" MATCHES ";cxx_lambdas;" AND
-       ";${CMAKE_CXX_COMPILE_FEATURES};" MATCHES ";cxx_defaulted_move_initializers;" AND
-       ";${CMAKE_CXX_COMPILE_FEATURES};" MATCHES ";cxx_delegating_constructors;" AND
-       ";${CMAKE_CXX_COMPILE_FEATURES};" MATCHES ";cxx_thread_local;" AND
-       ";${CMAKE_CXX_COMPILE_FEATURES};" MATCHES ";cxx_constexpr;" AND
-       ";${CMAKE_CXX_COMPILE_FEATURES};" MATCHES ";cxx_decltype_incomplete_return_types;" AND
-       ";${CMAKE_CXX_COMPILE_FEATURES};" MATCHES ";cxx_auto_type;")
+   get_property(cxx_features GLOBAL PROPERTY CMAKE_CXX_KNOWN_FEATURES)
+   if (";${cxx_features};" MATCHES ";cxx_rvalue_references;" AND
+       ";${cxx_features};" MATCHES ";cxx_variadic_templates;" AND
+       ";${cxx_features};" MATCHES ";cxx_lambdas;" AND
+       ";${cxx_features};" MATCHES ";cxx_defaulted_move_initializers;" AND
+       ";${cxx_features};" MATCHES ";cxx_delegating_constructors;" AND
+       ";${cxx_features};" MATCHES ";cxx_thread_local;" AND
+       ";${cxx_features};" MATCHES ";cxx_constexpr;" AND
+       ";${cxx_features};" MATCHES ";cxx_decltype_incomplete_return_types;" AND
+       ";${cxx_features};" MATCHES ";cxx_auto_type;")
 
       set(COMPILER_CAN_DO_CPP_11 1)
       # Set which standard to use unless someone has already set it to something

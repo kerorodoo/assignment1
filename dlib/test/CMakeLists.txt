@@ -9,6 +9,9 @@ cmake_minimum_required(VERSION 2.8.4)
 set (target_name dtest)
 PROJECT(${target_name})
 
+# compile the dlib/all/source.cpp file into its own object just to make sure it compiles
+set(DLIB_TEST_COMPILE_ALL_SOURCE_CPP ON)
+
 include(../cmake)
 
 # This variable contains a list of all the tests we are building

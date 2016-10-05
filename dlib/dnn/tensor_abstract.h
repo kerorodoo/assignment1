@@ -4,6 +4,7 @@
 #ifdef DLIB_DNn_TENSOR_ABSTRACT_H_
 
 #include "../matrix.h"
+#include "../any/any_abstract.h"
 
 namespace dlib
 {
@@ -185,6 +186,26 @@ namespace dlib
                   values in the data pointed to by device_write_only() are undefined and
                   you should only call device_write_only() if you are going to assign to
                   every memory location in the returned memory block.  
+        !*/
+
+        virtual const any& annotation(
+        ) const = 0;
+        /*!
+            ensures
+                - returns a const reference to the any object in this tensor.  The any
+                  object can be used to store any additional annotation you like in a
+                  tensor.  However, it should be noted that the annotation() is ignored by
+                  serialize() and therefore not saved when a tensor is serialized.
+        !*/
+
+        virtual any& annotation(
+        ) = 0;
+        /*!
+            ensures
+                - returns a non-const reference to the any object in this tensor.  The any
+                  object can be used to store any additional annotation you like in a
+                  tensor.  However, it should be noted that the annotation() is ignored by
+                  serialize() and therefore not saved when a tensor is serialized.
         !*/
 
         int device_id(
@@ -461,6 +482,7 @@ namespace dlib
                 - #k() == 0
                 - #nr() == 0
                 - #nc() == 0
+                - #annotation().is_empty() == true
         !*/
 
         void copy_size (
@@ -541,12 +563,38 @@ namespace dlib
                 have its own block of memory but instead simply holds pointers to the
                 memory of another tensor object.  It therefore allows you to efficiently
                 break a tensor into pieces and pass those pieces into functions.
+
+                An alias_tensor_instance doesn't own the resources it points to in any sense.
+                So it is important to make sure that the underlying owning tensor doesn't get
+                destructed before any alias tensors which point to it are destructed.
         !*/
 
         // You can't default initialize this object.  You can only get instances of it from
         // alias_tensor::operator().
         alias_tensor_instance(
         ); 
+    };
+
+    class alias_tensor_const_instance 
+    {
+        /*!
+            WHAT THIS OBJECT REPRESENTS
+                This is essentially a const version of alias_tensor_instance and therefore
+                represents a tensor.  However, due to the mechanics of C++, this object
+                can't inherit from tensor.  So instead it provides a get() and an implicit
+                conversion to const tensor.
+        !*/
+
+    public:
+
+        // Methods that cast the alias to a tensor.
+        const tensor& get() const;
+        operator const tensor& (); 
+
+    private:
+        // You can't default initialize this object.  You can only get instances of it from
+        // alias_tensor::operator().
+        alias_tensor_const_instance();
     };
 
     class alias_tensor 
@@ -603,7 +651,7 @@ namespace dlib
             requires
                 - offset+size() <= t.size()
             ensures
-                - Return a tensor that simply aliases the elements of t beginning with t's
+                - Returns a tensor that simply aliases the elements of t beginning with t's
                   offset'th element.  Specifically, this function returns an aliasing
                   tensor T such that:
                     - T.size()   == size()
@@ -613,6 +661,19 @@ namespace dlib
                     - T.nc()     == nc()
                     - T.host()   == t.host()+offset
                     - T.device() == t.device()+offset
+                    - &T.annotation() == &t.annotation()
+        !*/
+
+        alias_tensor_const_instance operator() (
+            const tensor& t,
+            size_t offset
+        );
+        /*!
+            requires
+                - offset+size() <= t.size()
+            ensures
+                - This function is identical to the above version of operator() except that 
+                  it takes and returns const tensors instead of non-const tensors.
         !*/
     };
 

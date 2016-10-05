@@ -13,7 +13,7 @@ include(cmake_utils/use_cpp_11.cmake)
 
 
 set(CPACK_PACKAGE_VERSION_MAJOR "19")
-set(CPACK_PACKAGE_VERSION_MINOR "0")
+set(CPACK_PACKAGE_VERSION_MINOR "1")
 set(CPACK_PACKAGE_VERSION_PATCH "99")
 set(VERSION ${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}.${CPACK_PACKAGE_VERSION_PATCH})
 # Set DLIB_VERSION in the including CMake file so they can use it to do whatever they want. 
@@ -22,7 +22,6 @@ if(has_parent)
    set(DLIB_VERSION ${VERSION} PARENT_SCOPE)
 endif()
 
-set(CMAKE_LEGACY_CYGWIN_WIN32 0) # Remove when CMake >= 2.8.4 is required
 # Suppress cmake warnings about changes in new versions.
 if(COMMAND cmake_policy) 
    cmake_policy(SET CMP0003 NEW) 
@@ -184,6 +183,7 @@ if (NOT TARGET dlib)
          threads/threads_kernel_2.cpp
          threads/threads_kernel_shared.cpp
          threads/thread_pool_extension.cpp
+         threads/async.cpp
          timer/timer.cpp
          stack_trace.cpp
          )
@@ -344,6 +344,15 @@ if (NOT TARGET dlib)
                external/zlib/uncompr.c
                external/zlib/zutil.c
                )
+            if (NEON)
+               enable_language(ASM)
+               set(source_files ${source_files}
+                  external/libpng/arm/arm_init.c
+                  external/libpng/arm/filter_neon_intrinsics.c
+                  external/libpng/arm/filter_neon.S
+                  )
+               set_source_files_properties(external/libpng/arm/filter_neon.S PROPERTIES COMPILE_FLAGS "${CMAKE_ASM_FLAGS} ${CMAKE_CXX_FLAGS} -x assembler-with-cpp")
+            endif()
             set(REQUIRES_LIBS "")
          endif()
          set(source_files ${source_files}
@@ -456,7 +465,7 @@ if (NOT TARGET dlib)
             # Note that we add __STRICT_ANSI__ to avoid freaking out nvcc with gcc specific
             # magic in the standard C++ header files (since nvcc uses gcc headers on
             # linux).
-            list(APPEND CUDA_NVCC_FLAGS "-arch=sm_30;-std=c++11;-D__STRICT_ANSI__")
+            list(APPEND CUDA_NVCC_FLAGS "-arch=sm_30;-std=c++11;-D__STRICT_ANSI__;-D_MWAITXINTRIN_H_INCLUDED;-D_FORCE_INLINES")
 
             include(cmake_utils/test_for_cudnn/find_cudnn.txt)
 
@@ -506,11 +515,12 @@ if (NOT TARGET dlib)
          else()
             set(DLIB_USE_CUDA OFF CACHE STRING ${DLIB_USE_BLAS_STR} FORCE )
             toggle_preprocessor_switch(DLIB_USE_CUDA)
-            if (NOT cudnn OR NOT cudnn_include OR NOT cudnn_test_compile_worked)
-               message(STATUS "*** cuDNN V5.0 OR GREATER NOT FOUND.  DLIB WILL NOT USE CUDA. ***")
-               message(STATUS "*** If you have cuDNN then set CMAKE_PREFIX_PATH to include cuDNN's folder.")
-            endif()
-            if (NOT COMPILER_CAN_DO_CPP_11)
+            if (COMPILER_CAN_DO_CPP_11)
+               if (NOT cudnn OR NOT cudnn_include OR NOT cudnn_test_compile_worked)
+                  message(STATUS "*** cuDNN V5.0 OR GREATER NOT FOUND.  DLIB WILL NOT USE CUDA. ***")
+                  message(STATUS "*** If you have cuDNN then set CMAKE_PREFIX_PATH to include cuDNN's folder.")
+               endif()
+            else ()
                message(STATUS "*** Dlib CUDA support requires C++11 but your compiler doesn't support it. ***")
             endif()
          endif()
@@ -566,6 +576,11 @@ if (NOT TARGET dlib)
       endif()
 
    endif ()  ##### end of if NOT DLIB_ISO_CPP_ONLY ##########################################################
+
+   # Allow the unit tests to ask us to compile the all/source.cpp file just to make sure it compiles.
+   if (DLIB_TEST_COMPILE_ALL_SOURCE_CPP)
+      ADD_LIBRARY(dlib_all_source_cpp STATIC all/source.cpp) 
+   endif()
 
    # Install the library
    if (NOT DLIB_IN_PROJECT_BUILD)

@@ -401,10 +401,17 @@ namespace dlib
 
     namespace impl
     {
-        std::ostream& get_data_ostream()
+        int get_data_fd()
         {
-            static filestreambuf dbuff(STDIN_FILENO, -1);
-            static ostream out(&dbuff);
+            char* env_fd = getenv("DLIB_SUBPROCESS_DATA_FD");
+            DLIB_CASSERT(env_fd != 0,"");
+            return atoi(env_fd);
+        }
+
+        std::iostream& get_data_iostream()
+        {
+            static filestreambuf dbuff(get_data_fd(), -1);
+            static iostream out(&dbuff);
             return out;
         }
     }
@@ -426,17 +433,33 @@ namespace dlib
         if (child_pid == 0) 
         {   
             // In child process
-            dup2(data_pipe.child_fd(), STDIN_FILENO);
             dup2(stdout_pipe.child_fd(), STDOUT_FILENO);
             dup2(stderr_pipe.child_fd(),  STDERR_FILENO);
-            data_pipe.close(); 
             stdout_pipe.close();
             stderr_pipe.close();
 
             char* argv[] = {(char*)program_name, nullptr};
-            char* envp[] = {nullptr};
+            char* cudadevs = getenv("CUDA_VISIBLE_DEVICES");
+            if (cudadevs)
+            {
+                std::ostringstream sout;
+                sout << "DLIB_SUBPROCESS_DATA_FD="<<data_pipe.child_fd();
+                std::string extra = sout.str();
 
-            execve(argv[0], argv, envp);
+                std::string extra2 = std::string("CUDA_VISIBLE_DEVICES=") + cudadevs;
+                char* envp[] = {(char*)extra.c_str(), (char*)extra2.c_str(), nullptr};
+                execve(argv[0], argv, envp);
+            }
+            else
+            {
+                std::ostringstream sout;
+                sout << "DLIB_SUBPROCESS_DATA_FD="<<data_pipe.child_fd();
+                std::string extra = sout.str();
+                char* envp[] = {(char*)extra.c_str(), nullptr};
+                execve(argv[0], argv, envp);
+            }
+
+
             // If launching the child didn't work then bail immediately so the parent
             // process has no chance to get tweaked out (*cough* MATLAB *cough*).
             _Exit(1);

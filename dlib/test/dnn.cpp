@@ -387,7 +387,7 @@ namespace
         alias_tensor at(2,2);
         auto A0 = at(A,0);
         auto A4 = at(A,4);
-        auto A8 = at(A,8);
+        auto A8 = at(const_cast<const resizable_tensor&>(A),8);
         DLIB_TEST(mat(A0) == truth1);
         DLIB_TEST(mat(at(A,4)) == truth2);
         DLIB_TEST(mat(A8) == truth3);
@@ -494,6 +494,103 @@ namespace
             B.device();
             memcpy(A, truth);
             DLIB_TEST(max(abs(mat(A)- mat(truth))) < 1e-5);
+#endif
+        }
+
+        {
+            resizable_tensor A, B;
+            A.set_size(11);
+            B.copy_size(A);
+
+            A = 4;
+            B = 1;
+            matrix<float> truth;
+
+
+            alias_tensor at(5);
+            A = 4;
+            A.host();
+            B.host();
+            {
+                // non-aliasing test
+                auto aA = at(A,5);
+                auto aB = at(B,5);
+                memcpy(aA, aB);
+                truth = {4,4,4,4,4,  1,1,1,1,1, 4};
+                DLIB_TEST(max(abs(mat(A)- truth)) < 1e-5);
+            }
+            {
+                // aliasing test
+                auto aA = at(A,1);
+                auto aB = at(A,6);
+                memcpy(aA, aB);
+                truth = {4,1,1,1,1,  4,1,1,1,1, 4};
+                DLIB_TEST(max(abs(mat(A)- truth)) < 1e-5);
+            }
+
+
+#ifdef DLIB_USE_CUDA
+            A = 4;
+            A.device();
+            B.host();
+            {
+                // non-aliasing test
+                auto aA = at(A,5);
+                auto aB = at(B,5);
+                memcpy(aA, aB);
+                truth = {4,4,4,4,4,  1,1,1,1,1, 4};
+                DLIB_TEST(max(abs(mat(A)- truth)) < 1e-5);
+            }
+            {
+                // aliasing test
+                auto aA = at(A,1);
+                auto aB = at(A,6);
+                memcpy(aA, aB);
+                truth = {4,1,1,1,1,  4,1,1,1,1, 4};
+                DLIB_TEST(max(abs(mat(A)- truth)) < 1e-5);
+            }
+
+
+            A = 4;
+            A.device();
+            B.device();
+            {
+                // non-aliasing test
+                auto aA = at(A,5);
+                auto aB = at(B,5);
+                memcpy(aA, aB);
+                truth = {4,4,4,4,4,  1,1,1,1,1, 4};
+                DLIB_TEST(max(abs(mat(A)- truth)) < 1e-5);
+            }
+            {
+                // aliasing test
+                auto aA = at(A,1);
+                auto aB = at(A,6);
+                memcpy(aA, aB);
+                truth = {4,1,1,1,1,  4,1,1,1,1, 4};
+                DLIB_TEST(max(abs(mat(A)- truth)) < 1e-5);
+            }
+
+            A = 4;
+            A.host();
+            B.device();
+            {
+                // non-aliasing test
+                auto aA = at(A,5);
+                auto aB = at(B,5);
+                memcpy(aA, aB);
+                truth = {4,4,4,4,4,  1,1,1,1,1, 4};
+                DLIB_TEST(max(abs(mat(A)- truth)) < 1e-5);
+            }
+            {
+                // aliasing test
+                auto aA = at(A,1);
+                auto aB = at(A,6);
+                memcpy(aA, aB);
+                truth = {4,1,1,1,1,  4,1,1,1,1, 4};
+                DLIB_TEST(max(abs(mat(A)- truth)) < 1e-5);
+            }
+
 #endif
         }
 
@@ -897,7 +994,12 @@ namespace
         DLIB_TEST(max(abs(mat(means) -mat(means2))) < 1e-4);
         DLIB_TEST(max(abs(mat(invstds) -mat(invstds2))) < 1e-4);
         DLIB_TEST(max(abs(mat(running_means) -mat(running_means2))) < 1e-4);
-        DLIB_TEST(max(abs(mat(running_variances) -mat(running_variances2))) < 1e-4);
+        DLIB_TEST_MSG(max(abs(mat(running_variances) -mat(running_variances2))) < 1e-4,
+            mean(mat(running_variances)) 
+            << "\n" << mean(mat(running_variances2))
+            << "\n" << max(abs(mat(running_variances) -mat(running_variances2)))
+            << "\n" << mean(abs(mat(running_variances) -mat(running_variances2)))
+            );
 
 
         // now check that the gradients match as well
@@ -1587,7 +1689,7 @@ namespace
                 "Runs tests on the deep neural network tools.")
         {}
 
-        void perform_test (
+        void run_tests (
         )
         {
             // make the tests repeatable
@@ -1643,6 +1745,17 @@ namespace
             test_visit_funcions();
             test_copy_tensor_cpu();
             test_concat();
+        }
+
+        void perform_test()
+        {
+            dlog << LINFO << "NOW RUNNING TESTS WITH set_dnn_prefer_fastest_algorithms()";
+            set_dnn_prefer_fastest_algorithms();
+            run_tests();
+
+            dlog << LINFO << "NOW RUNNING TESTS WITH set_dnn_prefer_smallest_algorithms()";
+            set_dnn_prefer_smallest_algorithms();
+            run_tests();
         }
     } a;
 }

@@ -1417,6 +1417,16 @@ namespace dlib
 
 // ----------------------------------------------------------------------------------------
 
+    template <typename EXP>
+    constexpr bool is_row_major (
+        const matrix_exp<EXP>&
+    )
+    {
+        return is_same_type<typename EXP::layout_type,row_major_layout>::value;
+    }
+
+// ----------------------------------------------------------------------------------------
+
     template <
         typename EXP
         >
@@ -1427,11 +1437,24 @@ namespace dlib
         typedef typename matrix_exp<EXP>::type type;
 
         type val = 0;
-        for (long r = 0; r < m.nr(); ++r)
+        if (is_row_major(m))
+        {
+            for (long r = 0; r < m.nr(); ++r)
+            {
+                for (long c = 0; c < m.nc(); ++c)
+                {
+                    val += m(r,c);
+                }
+            }
+        }
+        else
         {
             for (long c = 0; c < m.nc(); ++c)
             {
-                val += m(r,c);
+                for (long r = 0; r < m.nr(); ++r)
+                {
+                    val += m(r,c);
+                }
             }
         }
         return val;
@@ -2573,7 +2596,8 @@ namespace dlib
             pixel_traits<P>::grayscale,
             pixel_traits<P>::rgb,
             pixel_traits<P>::hsi,
-            pixel_traits<P>::rgb_alpha
+            pixel_traits<P>::rgb_alpha,
+            pixel_traits<P>::lab
             >::value
         >
     struct pixel_to_vector_helper;
@@ -2637,6 +2661,21 @@ namespace dlib
         }
     };
 
+    template <typename P>
+    struct pixel_to_vector_helper<P,5>
+    {
+        template <typename M>
+        static void assign (
+                M& m,
+                const P& pixel
+        )
+        {
+            m(0) = static_cast<typename M::type>(pixel.l);
+            m(1) = static_cast<typename M::type>(pixel.a);
+            m(2) = static_cast<typename M::type>(pixel.b);
+        }
+    };
+
 
     template <
         typename T,
@@ -2660,7 +2699,8 @@ namespace dlib
             pixel_traits<P>::grayscale,
             pixel_traits<P>::rgb,
             pixel_traits<P>::hsi,
-            pixel_traits<P>::rgb_alpha
+            pixel_traits<P>::rgb_alpha,
+            pixel_traits<P>::lab
             >::value
         >
     struct vector_to_pixel_helper;
@@ -2721,6 +2761,21 @@ namespace dlib
             pixel.green = static_cast<unsigned char>(m(1));
             pixel.blue = static_cast<unsigned char>(m(2));
             pixel.alpha = static_cast<unsigned char>(m(3));
+        }
+    };
+
+    template <typename P>
+    struct vector_to_pixel_helper<P,5>
+    {
+        template <typename M>
+        static void assign (
+                P& pixel,
+                const M& m
+        )
+        {
+            pixel.l = static_cast<unsigned char>(m(0));
+            pixel.a = static_cast<unsigned char>(m(1));
+            pixel.b = static_cast<unsigned char>(m(2));
         }
     };
 
