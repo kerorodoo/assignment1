@@ -1,0 +1,80 @@
+<?xml version='1.0' encoding='ISO-8859-1'?>
+<?xml-stylesheet type='text/xsl' href='image_metadata_stylesheet.xsl'?>
+<dataset>
+<name>imglab dataset</name>
+<comment>Created by py_trans_pts2xml.py.</comment>
+<images>
+  <image file='/home/chin/Downloads/helen/trainset/213033657_1.jpg'>
+    <box top = '339' left = '367' width = '380' height = '362'>
+      <part name='0' x='381' y='375'/>
+      <part name='1' x='375' y='423'/>
+      <part name='2' x='367' y='480'/>
+      <part name='3' x='371' y='535'/>
+      <part name='4' x='386' y='581'/>
+      <part name='5' x='410' y='622'/>
+      <part name='6' x='427' y='649'/>
+      <part name='7' x='449' y='677'/>
+      <part name='8' x='484' y='695'/>
+      <part name='9' x='526' y='701'/>
+      <part name='10' x='575' y='689'/>
+      <part name='11' x='623' y='667'/>
+      <part name='12' x='667' y='640'/>
+      <part name='13' x='695' y='595'/>
+      <part name='14' x='715' y='551'/>
+      <part name='15' x='735' y='513'/>
+      <part name='16' x='748' y='468'/>
+      <part name='17' x='414' y='358'/>
+      <part name='18' x='445' y='339'/>
+      <part name='19' x='480' y='342'/>
+      <part name='20' x='511' y='356'/>
+      <part name='21' x='539' y='375'/>
+      <part name='22' x='603' y='395'/>
+      <part name='23' x='639' y='388'/>
+      <part name='24' x='676' y='388'/>
+      <part name='25' x='706' y='407'/>
+      <part name='26' x='722' y='437'/>
+      <part name='27' x='560' y='428'/>
+      <part name='28' x='557' y='455'/>
+      <part name='29' x='554' y='483'/>
+      <part name='30' x='551' y='509'/>
+      <part name='31' x='502' y='536'/>
+      <part name='32' x='518' y='546'/>
+      <part name='33' x='534' y='552'/>
+      <part name='34' x='550' y='552'/>
+      <part name='35' x='568' y='552'/>
+      <part name='36' x='450' y='399'/>
+      <part name='37' x='471' y='394'/>
+      <part name='38' x='496' y='402'/>
+      <part name='39' x='511' y='421'/>
+      <part name='40' x='487' y='423'/>
+      <part name='41' x='462' y='416'/>
+      <part name='42' x='602' y='445'/>
+      <part name='43' x='629' y='432'/>
+      <part name='44' x='652' y='435'/>
+      <part name='45' x='668' y='451'/>
+      <part name='46' x='649' y='461'/>
+      <part name='47' x='625' y='457'/>
+      <part name='48' x='462' y='585'/>
+      <part name='49' x='485' y='583'/>
+      <part name='50' x='510' y='582'/>
+      <part name='51' x='526' y='591'/>
+      <part name='52' x='545' y='587'/>
+      <part name='53' x='562' y='603'/>
+      <part name='54' x='584' y='612'/>
+      <part name='55' x='558' y='630'/>
+      <part name='56' x='533' y='637'/>
+      <part name='57' x='514' y='635'/>
+      <part name='58' x='495' y='628'/>
+      <part name='59' x='478' y='611'/>
+      <part name='60' x='471' y='588'/>
+      <part name='61' x='505' y='601'/>
+      <part name='62' x='522' y='607'/>
+      <part name='63' x='539' y='609'/>
+      <part name='64' x='574' y='612'/>
+      <part name='65' x='539' y='609'/>
+      <part name='66' x='522' y='607'/>
+      <part name='67' x='505' y='601'/>
+    </box>
+  </image>
+</images>
+</dataset>
