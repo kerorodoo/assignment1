@@ -139,6 +139,8 @@ int main(int argc, char** argv)
         trainer.set_cascade_depth( std::stoi( trainer_cascade_depth ) );
         trainer.set_feature_pool_size( std::stoi( trainer_feature_pool_size ) );
 
+        // set thread
+        trainer.set_num_threads(2);
 
         // setting training method
         trainer.set_method(shape_predictor_trainer::train_method::random_fern);
