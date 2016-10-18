@@ -206,7 +206,8 @@ namespace dlib
     void extract_highdim_face_lbp_descriptors (
         const image_type& img,
         const full_object_detection& det,
-        std::vector<T>& feats
+        std::vector<T>& feats,
+        const unsigned long num_scales = 5
     )
     {
         // make sure requires clause is not broken
@@ -216,7 +217,7 @@ namespace dlib
             << "\n\t det.num_parts(): " << det.num_parts()
             );
 
-        const unsigned long num_scales = 5; 
+        //const unsigned long num_scales = 5; 
         feats.clear();
         dlib::vector<double,2> l, r;
         double cnt = 0;
@@ -296,7 +297,7 @@ namespace dlib
         for (unsigned long i = 0; i < feats.size(); ++i)
             feats[i] = std::sqrt(feats[i]);
 
-        DLIB_ASSERT(feats.size() == 99120, feats.size());
+        //DLIB_ASSERT(feats.size() == 99120, feats.size());
     }
 
 // ----------------------------------------------------------------------------------------
