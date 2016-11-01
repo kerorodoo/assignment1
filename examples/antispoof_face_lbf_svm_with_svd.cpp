@@ -127,14 +127,66 @@ void reduce_samples_dimension(
 {
     discriminant_pca<sample_type> dpca;
 
-    for (unsigned int i = 0; i < samples.size(); i++)
+    cout << "\n\tvoid reduce_samples_dimension start: " << samples.size() << endl;
+
+    matrix<double> m(samples[0].nr(), samples.size());
+
+    for (int i = 0; i < m.nc(); ++i)
     {
-        cout << "\n\treducing samples[" << i << "] " << endl;
-        dpca.add_to_total_variance(samples[i]);
+
+        set_colm(m, i) = samples[i];
+
+        samples[i].set_size(0,0);   // free RAM
+
+        //DLIB_CASSERT(dpca.in_vector_size() == 99120,
+        //    "\t void discriminant_pca()"
+        //    << "\n\t Invalid result to this function."
+        //    << "\n\t dpca.in_vector_size(): " << dpca.in_vector_size()
+        //);
     }
 
+    samples.resize(0); //free RAM
 
-    cout << "\n\tvoid reduce_samples_dimension start: " << samples.size() << endl;
+    cout << "\n\tvoid reduce_samples_dimension before reduce: ";
+    cout << "\n\t   m.size: " << m.nr() << "x" << m.nc();
+
+    // Do SVD to reduce dims
+    matrix<double> pu,pw,pv;
+    
+    string pu_path = "pu.dat";
+    if (!file_exists(pu_path))
+    {
+        cout << "\n\tpu.dat  not exists compute svd_fast ... ";
+        cout << "\n\tstaring svd_fast ... ";
+    
+        svd_fast(m, pu, pw, pv, m.nc(), 1);
+    
+        serialize("pw.dat") << pw;
+        serialize("pv.dat") << pv;
+        serialize("pu.dat") << pu;
+        //dpca_samples = m*pv;
+
+
+        cout << "\n\tcomplete svd_fast ... ";
+        cout << "\n\t   m.size: " << m.nr() << "x" << m.nc(); //mxn
+        cout << "\n\t   pu.size: " << pu.nr() << "x" << pu.nc(); //mxn
+        cout << "\n\t   pw.size: " << pw.nr() << "x" << pw.nc();  //nx1
+        cout << "\n\t   pv.size: " << pv.nr() << "x" << pv.nc();  //nxn
+
+        pw.set_size(0,0);   // free RAM
+        pv.set_size(0,0);   // free RAM
+    }
+
+    deserialize(pu_path) >> pu;
+    cout << "\n\t   pu.size: " << pu.nr() << "x" << pu.nc(); //mxn
+    
+    cout << "\n\tvoid reduce_samples_dimension after reduce: ";
+    cout << "\n\t   reduce samples ..." << endl;
+    for (int i = 0; i < m.nc(); ++i)
+    {
+        dpca_samples.push_back(trans(pu) * colm(m,i));
+
+    }
 
     cout << "\n\t   dpca_samples.size: " << dpca_samples[0].nr() << "x" << dpca_samples.size() << endl;  //nxn 
     
@@ -152,7 +204,84 @@ void get_accurary_cross_training_set (
     double label = +1
 )
 {
+    typedef matrix<double, 0, 1> sample_type;
+    
+    std::vector<directory> image_dirs;  //path of folder form input dirs
+    std::vector<file> images;   //path of images
+    dlib::array2d<rgb_pixel> img;
+    
 
+	image_dirs = dirs.get_dirs();
+
+    // getting pu
+    string pu_path = "pu.dat";
+    matrix<double> pu;
+    deserialize(pu_path) >> pu;
+    
+    int image_count = 0;
+    int true_count= 0;
+
+    //Each Identity folder
+	for(unsigned long x = 0; x < image_dirs.size(); x++)
+    {
+		string dir_name = image_dirs[x].name(); //Identity folder
+		
+		images = image_dirs[x].get_files();     //Images path
+    
+        //Each Image
+		for(unsigned long y = 0; y < images.size(); y++)
+        {
+			//Load image
+			string image_name = images[y].name();
+			load_image(img, images[y]);
+
+            // Make the image larger so we can detect small faces.
+			pyramid_up(img);
+
+			// Now tell the face detector to give us a list of bounding boxes
+			// around all the faces in the image.
+            // detect faces
+			std::vector<dlib::rectangle> dets = detector(img);
+
+
+            for (unsigned long i = 0; i < dets.size(); i++)
+            {
+
+                image_count++;
+
+                // Now we will go ask the shape_predictor to tell us the pose of
+				// each face we detected.
+				std::vector<full_object_detection> shapes;
+
+                // detect landmarks
+				full_object_detection shape = sp(img, dets[i]);
+				
+                std::vector<double> feats;
+
+                //extract faces
+                extract_highdim_face_lbp_descriptors(img, shape, feats, 5);
+
+
+                sample_type sample(feats.size(), 1);
+
+                for (unsigned long feats_idx = 0; feats_idx < feats.size(); feats_idx++)
+                {
+                    sample(feats_idx) = feats[feats_idx];
+                }
+                
+                matrix<double> samp(trans(pu) * sample);
+               
+                double classifier_output = learned_funct(samp);
+                
+                if (label * classifier_output >= 0)
+                    true_count++;
+
+            }
+        }
+    }
+
+    cout << "The accuracy of " << dirs.name() << " is : " 
+         << (double)true_count / (double)image_count << endl;
 
 }
 
@@ -293,7 +422,7 @@ int main(int argc, char const *argv[])
 
     cout << "\nnumber of support vectors in our learned_dfunct is: "
          << learned_dfunct.function.basis_vectors.size() << endl;
-    //serialize("saved_dfunction.dat") << learned_dfunct;
+    serialize("saved_dfunction.dat") << learned_dfunct;
     cout << "\nd_svm training complete !!!" << endl;
 
     // accurary of training set
@@ -324,7 +453,7 @@ int main(int argc, char const *argv[])
     // Another thing that is worth knowing is that just about everything in dlib
     // is serializable.  So for example, you can save the learned_pfunct object
     // to disk and recall it later like so:
-    //serialize("\nsaved_pfunction.dat") << learned_pfunct;
+    serialize("\nsaved_pfunction.dat") << learned_pfunct;
     cout << "\np_svm training complete !!!" << endl;
 
 
