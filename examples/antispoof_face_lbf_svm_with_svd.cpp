@@ -272,7 +272,10 @@ void get_accurary_cross_training_set (
                 matrix<double> samp(trans(pu) * sample);
                
                 double classifier_output = learned_funct(samp);
-                
+
+                cout << "\n\tthe classifier_output from: " 
+                     << dirs << "/" << dir_name << "/" << image_name;
+                cout << "\n\tthe classifier_output is: " << classifier_output;
                 if (label * classifier_output >= 0)
                     true_count++;
 
@@ -280,7 +283,7 @@ void get_accurary_cross_training_set (
         }
     }
 
-    cout << "The accuracy of " << dirs.name() << " is : " 
+    cout << "\n\tThe accuracy of " << dirs.name() << " is : " 
          << (double)true_count / (double)image_count << endl;
 
 }

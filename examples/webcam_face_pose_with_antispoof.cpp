@@ -381,9 +381,9 @@ int main(int argc, char** argv)
 
         // Load svm model for anti-spoo
         //if (strcmp(argv[2], "_d") > 0)
-            typedef decision_function<kernel_type> nfunct_type;
+        //    typedef decision_function<kernel_type> nfunct_type;
         //else
-        //    typedef probabilistic_decision_function<kernel_type> nfunct_type;  
+            typedef probabilistic_decision_function<kernel_type> nfunct_type;  
         typedef normalized_function<nfunct_type> funct_type;
         
         funct_type learned_funct;
