@@ -159,7 +159,7 @@ void reduce_samples_dimension(
         cout << "\n\tpu.dat  not exists compute svd_fast ... ";
         cout << "\n\tstaring svd_fast ... ";
     
-        svd_fast(m, pu, pw, pv, m.nc(), 1);
+        svd_fast(m, pu, pw, pv, 400, 4);
     
         serialize("pw.dat") << pw;
         serialize("pv.dat") << pv;
