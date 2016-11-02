@@ -324,7 +324,7 @@ int main(int argc, char const *argv[])
     // Another thing that is worth knowing is that just about everything in dlib
     // is serializable.  So for example, you can save the learned_pfunct object
     // to disk and recall it later like so:
-    //serialize("\nsaved_pfunction.dat") << learned_pfunct;
+    //serialize("saved_pfunction.dat") << learned_pfunct;
     cout << "\np_svm training complete !!!" << endl;
 
 
