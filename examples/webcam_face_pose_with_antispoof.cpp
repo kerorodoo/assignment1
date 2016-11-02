@@ -379,11 +379,15 @@ int main(int argc, char** argv)
         matrix<double> pu;
         deserialize(argv[2]) >> pu;
 
-        // Load svm model for anti-spoof
-        typedef probabilistic_decision_function<kernel_type> probabilistic_funct_type;  
-        typedef normalized_function<probabilistic_funct_type> pfunct_type;
-        pfunct_type learned_pfunct;
-        deserialize(argv[3]) >> learned_pfunct;
+        // Load svm model for anti-spoo
+        //if (strcmp(argv[2], "_d") > 0)
+            typedef decision_function<kernel_type> nfunct_type;
+        //else
+        //    typedef probabilistic_decision_function<kernel_type> nfunct_type;  
+        typedef normalized_function<nfunct_type> funct_type;
+        
+        funct_type learned_funct;
+        deserialize(argv[3]) >> learned_funct;
 
         // Grab and process frames until the main window is closed by the user.
         while(!win.is_closed())
@@ -446,7 +450,7 @@ int main(int argc, char** argv)
 
                 cout << "highdim face lbp descriptors feats after reduce: " << samp.nr()  << "x" << samp.nc() << endl;
 
-                cout << "face[" << i << "] the classifier output is " << learned_pfunct(samp) << endl;
+                cout << "face[" << i << "] the classifier output is " << learned_funct(samp) << endl;
             }
             
             end = std::chrono::steady_clock::now();
