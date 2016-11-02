@@ -99,8 +99,11 @@ void extract_samples_form_folder (
 
                 for (unsigned long feats_idx = 0; feats_idx < feats.size(); feats_idx++)
                 {
+                    if (feats[feats_idx] != 0)
+                        cout << "feats[" << feats_idx << "]: " << feats[feats_idx] << endl; 
                     sample(feats_idx) = feats[feats_idx];
                 }
+
 
                 //DLIB_CASSERT(sample.size() == 99120,
                 //"\t void extract_samples_form_folder()"
@@ -125,18 +128,40 @@ void reduce_samples_dimension(
     const double eps
     )
 {
-    discriminant_pca<sample_type> dpca;
+    int sample_nc = samples[0].nc();
+    int samples_size = samples.size();
+
+    cout << "\n\tvoid reduce_samples_dimension dpca start: ";
+    //discriminant_pca<sample_type> dpca;
 
     for (unsigned int i = 0; i < samples.size(); i++)
     {
-        cout << "\n\treducing samples[" << i << "] " << endl;
+        discriminant_pca<sample_type> dpca;
+        cout << "\n\treducing samples[" << i << "] ";
         dpca.add_to_total_variance(samples[i]);
+        //matrix<double> mat = dpca.dpca_matrix(eps);
+        matrix<double> mat = dpca.dpca_matrix_of_size(400);
+        cout << "\n\tdpca.matrix: " << mat.nr() << "x"  << mat.nc();
+        
+        samples[i] = 0;
     }
 
+    //matrix<double> mat = dpca.dpca_matrix(eps);
 
-    cout << "\n\tvoid reduce_samples_dimension start: " << samples.size() << endl;
+    //cout << "\n\tvoid reduce_samples_dimension dpca finished: ";
+    //cout << "\n\tdpca.matrix: " << mat.nr() << "x"  << mat.nc() << endl;
+    
+    cout << "\n\tvoid reduce_samples_dimension reducing strat ... ";
+    for (unsigned int i = 0; i < samples.size(); i++)
+    {
+        cout << "\n\treducing samples[" << i << "] " << endl;
+        samples[i] = 0;
+        //dpca.add_to_total_variance(samples[i]);
+    }
 
-    cout << "\n\t   dpca_samples.size: " << dpca_samples[0].nr() << "x" << dpca_samples.size() << endl;  //nxn 
+    cout << "\n\tvoid reduce_samples_dimension reducing end ...";
+    cout << "\n\tsamples.size() from " << sample_nc << "x" << samples_size;
+    cout << "\n\tto dpca_samples.size(): " << dpca_samples[0].nr() << "x" << dpca_samples.size() << endl;  //nxn 
     
 }
 
@@ -220,7 +245,7 @@ int main(int argc, char const *argv[])
 
     // Reduce dimension of samples by dpca
     cout << "reduceing dimension of samples ..." << endl;
-    reduce_samples_dimension(samples, dpca_samples, 0.9);
+    reduce_samples_dimension(samples, dpca_samples, 0.8);
     cout << "\tcomplete reduce samples dimension." << endl;
     cout << "\ttotal dpca_sample size: " << dpca_samples.size() << endl;
 
