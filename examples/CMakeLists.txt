@@ -59,12 +59,7 @@ else()
       
        include_directories(${OpenCV_INCLUDE_DIRS})
 
-       ADD_EXECUTABLE(webcam_face_pose_ex webcam_face_pose_ex.cpp)
-       TARGET_LINK_LIBRARIES(webcam_face_pose_ex dlib ${OpenCV_LIBS} )
        
-       ADD_EXECUTABLE(webcam_face_pose_with_chip_detail webcam_face_pose_with_chip_detail.cpp)
-       TARGET_LINK_LIBRARIES(webcam_face_pose_with_chip_detail dlib ${OpenCV_LIBS})
-
        ADD_EXECUTABLE(antispoof_face_lbf_svm_with_svd antispoof_face_lbf_svm_with_svd.cpp)
        TARGET_LINK_LIBRARIES(antispoof_face_lbf_svm_with_svd dlib ${OpenCV_LIBS})
    
