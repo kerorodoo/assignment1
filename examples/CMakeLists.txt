@@ -47,25 +47,33 @@ add_example(face_landmark_detection_noline)
 add_example(train_shape_predictor_adaptive)
 add_example(xml_parser_mine)
 
-set(OpenCV_DIR "/usr/local")
 
-find_package(OpenCV)
-if (OpenCV_FOUND)
-   include_directories(${OpenCV_INCLUDE_DIRS})
 
-   ADD_EXECUTABLE(webcam_face_pose_ex webcam_face_pose_ex.cpp)
-   TARGET_LINK_LIBRARIES(webcam_face_pose_ex dlib ${OpenCV_LIBS} )
-   ADD_EXECUTABLE(webcam_face_pose_with_chip_detail webcam_face_pose_with_chip_detail.cpp)
-   TARGET_LINK_LIBRARIES(webcam_face_pose_with_chip_detail dlib ${OpenCV_LIBS})
 
-   
-   ADD_EXECUTABLE(main main.cpp)
-   TARGET_LINK_LIBRARIES(main dlib ${OpenCV_LIBS})
-
+if (DLIB_NO_GUI_SUPPORT)
+   message("No GUI support, so we won't build the webcam_face_pose_ex example.")
 else()
-   message("OpenCV not found, so we won't build the webcam_face_pose_ex example.")
-endif()
+   find_package(OpenCV QUIET)
+   set(OpenCV_FOUND "/usr/local")
+   if (OpenCV_FOUND)
+      
+       include_directories(${OpenCV_INCLUDE_DIRS})
 
+       ADD_EXECUTABLE(webcam_face_pose_ex webcam_face_pose_ex.cpp)
+       TARGET_LINK_LIBRARIES(webcam_face_pose_ex dlib ${OpenCV_LIBS} )
+       
+       ADD_EXECUTABLE(webcam_face_pose_with_chip_detail webcam_face_pose_with_chip_detail.cpp)
+       TARGET_LINK_LIBRARIES(webcam_face_pose_with_chip_detail dlib ${OpenCV_LIBS})
+
+       ADD_EXECUTABLE(antispoof_face_lbf_svm_with_svd antispoof_face_lbf_svm_with_svd.cpp)
+       TARGET_LINK_LIBRARIES(antispoof_face_lbf_svm_with_svd dlib ${OpenCV_LIBS})
+   
+       ADD_EXECUTABLE(main main.cpp)
+       TARGET_LINK_LIBRARIES(main dlib ${OpenCV_LIBS})
+   else()
+      message("OpenCV not found, so we won't build the webcam_face_pose_ex example.")
+   endif()
+endif()
 
 #if (DLIB_LINK_WITH_SQLITE3)
 #   add_example(sqlite_ex)
