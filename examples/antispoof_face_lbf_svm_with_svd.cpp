@@ -159,7 +159,7 @@ void reduce_samples_dimension(
         cout << "\n\tpu.dat  not exists compute svd_fast ... ";
         cout << "\n\tstaring svd_fast ... ";
     
-        svd_fast(m, pu, pw, pv, 400, 4);
+        svd_fast(m, pu, pw, pv, 1000, 4);
     
         serialize("pw.dat") << pw;
         serialize("pv.dat") << pv;
@@ -184,11 +184,11 @@ void reduce_samples_dimension(
     cout << "\n\t   reduce samples ..." << endl;
     for (int i = 0; i < m.nc(); ++i)
     {
-        dpca_samples.push_back(trans(pu) * colm(m,i));
+        dpca_samples.push_back(trans(colm(m,i)) * pu);
 
     }
 
-    cout << "\n\t   dpca_samples.size: " << dpca_samples[0].nr() << "x" << dpca_samples.size() << endl;  //nxn 
+    cout << "\n\t   dpca_samples.size: " << dpca_samples.size() << "x" << dpca_samples[0].nc() << endl;  //nxn 
     
 }
 
@@ -269,7 +269,7 @@ void get_accurary_cross_training_set (
                     sample(feats_idx) = feats[feats_idx];
                 }
                 
-                matrix<double> samp(trans(pu) * sample);
+                matrix<double> samp(trans(sample) * pu);
                
                 double classifier_output = learned_funct(samp);
 
@@ -369,9 +369,12 @@ int main(int argc, char const *argv[])
     // now normalize each sample
     cout << "normalizing all the dpca_samples ..." << endl;
     for (unsigned long i = 0; i < dpca_samples.size(); ++i)
-        dpca_samples[i] = normalizer(dpca_samples[i]);
-    cout << "\tdpca_samples size: " << dpca_samples.size() << endl;
-    cout << "\tlabels size: " << labels.size() << endl;
+        dpca_samples[i] = normalizer(dpca_samples[i]); 
+  
+   
+    cout << "\n\tdpca_samples size: " << dpca_samples.size()
+         << "x" << dpca_samples[0].nc();   
+    cout << "\n\tlabels size: " << labels.size();
 
     // Now that we have some data we want to train on it.  However, there are
     // two parameters to the training.  These are the C and gamma parameters.
@@ -387,8 +390,9 @@ int main(int argc, char const *argv[])
     // function call.
     cout << "randomizing all the dpca_samples ..." << endl;
     randomize_samples(dpca_samples, labels);
-    cout << "\tdpca_samples size: " << dpca_samples.size() << endl;
-    cout << "\tlabels size: " << labels.size() << endl;
+    cout << "\n\tdpca_samples size: " << dpca_samples.size()
+         << "x" << dpca_samples[0].nc();
+    cout << "\n\tlabels size: " << labels.size();
 
 
     // here we make an instance of the svm_nu_trainer object
@@ -417,14 +421,14 @@ int main(int argc, char const *argv[])
     typedef decision_function<kernel_type> dec_funct_type;
     typedef normalized_function<dec_funct_type> dfunct_type;
 
-    cout << "d_svm training start !!!" << endl;
+    cout << "\nd_svm training start !!!";
 
     dfunct_type learned_dfunct; 
     learned_dfunct.normalizer = normalizer;
     learned_dfunct.function = trainer.train(dpca_samples, labels);
 
     cout << "\nnumber of support vectors in our learned_dfunct is: "
-         << learned_dfunct.function.basis_vectors.size() << endl;
+         << learned_dfunct.function.basis_vectors.size();
     serialize("saved_dfunction.dat") << learned_dfunct;
     cout << "\nd_svm training complete !!!" << endl;
 
@@ -441,7 +445,7 @@ int main(int argc, char const *argv[])
     typedef normalized_function<probabilistic_funct_type> pfunct_type;
 
 
-    cout << "\np_svm training start !!!" << endl;
+    cout << "\np_svm training start !!!";
 
     pfunct_type learned_pfunct; 
     learned_pfunct.normalizer = normalizer;
@@ -449,7 +453,7 @@ int main(int argc, char const *argv[])
     
     
     cout << "\nnumber of support vectors in our learned_pfunct is: "
-         << learned_pfunct.function.decision_funct.basis_vectors.size() << endl;
+         << learned_pfunct.function.decision_funct.basis_vectors.size();
     
     // Now we have a function that returns the probability that a given sample is of the +1 class.
 

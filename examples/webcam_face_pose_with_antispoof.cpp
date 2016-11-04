@@ -446,7 +446,7 @@ int main(int argc, char** argv)
                 }
 
         
-                matrix<double> samp(trans(pu) * sample);
+                matrix<double> samp(trans(sample) * pu);
 
                 cout << "highdim face lbp descriptors feats after reduce: " << samp.nr()  << "x" << samp.nc() << endl;
 
