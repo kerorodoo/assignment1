@@ -26,6 +26,69 @@
 using namespace std;
 using namespace dlib;
 
+
+//-----------------------------------------------------------------------------
+
+template <
+    typename image_type,
+    typename T
+    >
+void extract_customize_lbp_descriptors (
+    const image_type& img,
+    const full_object_detection& det, 
+    std::vector<T>& feats,
+    const unsigned long num_scales = 5
+)
+{
+    //const unsigned long num_scales = 5; 
+    feats.clear();
+
+    array2d<unsigned char> lbp;
+    make_uniform_lbp_image(img, lbp);
+
+    std::vector<point> parts;
+    parts.push_back(det.part(30));
+
+    for (unsigned long i = 0; i < parts.size(); ++i)
+        extract_histogram_descriptors(lbp, parts[i], feats);
+
+    if (num_scales > 1)
+    {
+        pyramid_down<4> pyr;
+
+        image_type img_temp;
+        pyr(img, img_temp);
+        //pyramid_up(img, img_temp, pyr);
+        unsigned long num_pyr_calls = 1;
+
+        // now pull the features out at coarser scales
+        for (unsigned long iter = 1; iter < num_scales; ++iter)
+        {
+	    // now do the feature extraction
+	    make_uniform_lbp_image(img_temp, lbp);
+	    std::cout << "\n\t\t img_pyr:" << img_temp.nr() 
+                      << "x" << img_temp.nc();
+
+            for (unsigned long i = 0; i < parts.size(); ++i)
+                    extract_histogram_descriptors(lbp, pyr.point_down(parts[i],num_pyr_calls), feats);
+
+
+            if (iter+1 < num_scales)
+            {
+                //pyr(img_temp);
+                pyramid_up(img_temp, pyr);
+                ++num_pyr_calls;
+            }
+        }
+    }
+
+    for (unsigned long i = 0; i < feats.size(); ++i)
+	feats[i] = std::sqrt(feats[i]);
+    //DLIB_ASSERT(feats.size() == 99120, feats.size());
+}
+
+
+//-----------------------------------------------------------------------------
 template <
     typename sample_type
     >
@@ -91,7 +154,8 @@ void extract_samples_form_folder (
 
                 std::vector<double> feats;
 
-                extract_highdim_face_lbp_descriptors(img, shape, feats, 5);
+		
+                extract_customize_lbp_descriptors(img, shape, feats, 1);
 
                 cout << "feats: " << feats.size() << endl;
 
@@ -159,7 +223,7 @@ void reduce_samples_dimension(
         cout << "\n\tpu.dat  not exists compute svd_fast ... ";
         cout << "\n\tstaring svd_fast ... ";
     
-        svd_fast(m, pu, pw, pv, 1000, 4);
+        svd_fast(m, pu, pw, pv, 10000, 4);
     
         serialize("pw.dat") << pw;
         serialize("pv.dat") << pv;
@@ -169,9 +233,9 @@ void reduce_samples_dimension(
 
         cout << "\n\tcomplete svd_fast ... ";
         cout << "\n\t   m.size: " << m.nr() << "x" << m.nc(); //mxn
-        cout << "\n\t   pu.size: " << pu.nr() << "x" << pu.nc(); //mxn
-        cout << "\n\t   pw.size: " << pw.nr() << "x" << pw.nc();  //nx1
-        cout << "\n\t   pv.size: " << pv.nr() << "x" << pv.nc();  //nxn
+        cout << "\n\t   pu.size: " << pu.nr() << "x" << pu.nc(); //mxk
+        cout << "\n\t   pw.size: " << pw.nr() << "x" << pw.nc();  //kx1
+        cout << "\n\t   pv.size: " << pv.nr() << "x" << pv.nc();  //nxk
 
         pw.set_size(0,0);   // free RAM
         pv.set_size(0,0);   // free RAM
@@ -184,11 +248,15 @@ void reduce_samples_dimension(
     cout << "\n\t   reduce samples ..." << endl;
     for (int i = 0; i < m.nc(); ++i)
     {
-        dpca_samples.push_back(trans(colm(m,i)) * pu);
+        //matrix<double> samp(trans(trans(colm(m,i)) * pu));
+        matrix<double> samp(colm(m,i));
+        cout << "\n\t   samp.size: " << samp.nr() << "x" << samp.nc();
+        cout << "\n\t   samp:" << trans(samp);
+        dpca_samples.push_back(samp);
 
     }
 
-    cout << "\n\t   dpca_samples.size: " << dpca_samples.size() << "x" << dpca_samples[0].nc() << endl;  //nxn 
+    cout << "\n\t   dpca_samples.size: " << dpca_samples[0].nr() << "x" << dpca_samples.size() << endl;  //nxn
     
 }
 
@@ -222,26 +290,26 @@ void get_accurary_cross_training_set (
     int true_count= 0;
 
     //Each Identity folder
-	for(unsigned long x = 0; x < image_dirs.size(); x++)
+    for(unsigned long x = 0; x < image_dirs.size(); x++)
     {
-		string dir_name = image_dirs[x].name(); //Identity folder
+       string dir_name = image_dirs[x].name(); //Identity folder
 		
-		images = image_dirs[x].get_files();     //Images path
+       images = image_dirs[x].get_files();     //Images path
     
         //Each Image
-		for(unsigned long y = 0; y < images.size(); y++)
+        for(unsigned long y = 0; y < images.size(); y++)
         {
-			//Load image
-			string image_name = images[y].name();
-			load_image(img, images[y]);
+	    //Load image
+	    string image_name = images[y].name();
+	    load_image(img, images[y]);
 
             // Make the image larger so we can detect small faces.
-			pyramid_up(img);
+	    pyramid_up(img);
 
-			// Now tell the face detector to give us a list of bounding boxes
-			// around all the faces in the image.
+	    // Now tell the face detector to give us a list of bounding boxes
+	    // around all the faces in the image.
             // detect faces
-			std::vector<dlib::rectangle> dets = detector(img);
+	    std::vector<dlib::rectangle> dets = detector(img);
 
 
             for (unsigned long i = 0; i < dets.size(); i++)
@@ -250,35 +318,38 @@ void get_accurary_cross_training_set (
                 image_count++;
 
                 // Now we will go ask the shape_predictor to tell us the pose of
-				// each face we detected.
-				std::vector<full_object_detection> shapes;
+		// each face we detected.
+		std::vector<full_object_detection> shapes;
 
                 // detect landmarks
-				full_object_detection shape = sp(img, dets[i]);
+	        full_object_detection shape = sp(img, dets[i]);
 				
                 std::vector<double> feats;
 
                 //extract faces
-                extract_highdim_face_lbp_descriptors(img, shape, feats, 5);
+                extract_customize_lbp_descriptors(img, shape, feats, 1);
 
 
                 sample_type sample(feats.size(), 1);
 
-                for (unsigned long feats_idx = 0; feats_idx < feats.size(); feats_idx++)
+                for (double feats_idx = 0; feats_idx < feats.size(); feats_idx++)
                 {
                     sample(feats_idx) = feats[feats_idx];
                 }
+
                 
-                matrix<double> samp(trans(sample) * pu);
-               
+                //matrix<double> samp(trans(trans(sample) * pu));
+                matrix<double> samp(sample);
+                
                 double classifier_output = learned_funct(samp);
 
-                cout << "\n\tthe classifier_output from: " 
-                     << dirs << "/" << dir_name << "/" << image_name;
-                cout << "\n\tthe classifier_output is: " << classifier_output;
-                if (label * classifier_output >= 0)
+                //cout << "\n\tthe classifier_output from: " 
+                //     << dirs << "/" << dir_name << "/" << image_name;
+                //cout << "\n\tthe classifier_output is: " << classifier_output;
+                if (label > 0 && classifier_output > 0.5)
                     true_count++;
-
+                else if (classifier_output < 0 || classifier_output < 0.05)
+                    true_count++;
             }
         }
     }
@@ -304,12 +375,12 @@ int main(int argc, char const *argv[])
     // operate on our 2D sample_type objects.  You can use your own custom
     // kernels with these tools as well, see custom_trainer_ex.cpp for an
     // example.
-    typedef radial_basis_kernel<sample_type> kernel_type;
+    typedef radial_basis_kernel<lower_sample_type> kernel_type;
 
 	if (argc == 1)
 	{
 		cout << "Call this program like this:" << endl;
-		cout << "./face_landmark_detection_ex shape_predictor_68_face_landmarks.dat face_dataset_folder" << endl;
+		cout << "./face_landmark_detection_ex shape_predictor_68_face_landmarks.dat spoof_face_dataset_folder" << endl;
 		cout << "\nYou can get the shape_predictor_68_face_landmarks.dat file from:\n";
 		cout << "http://dlib.net/files/shape_predictor_68_face_landmarks.dat.bz2" << endl;
 		return 0;
@@ -337,25 +408,32 @@ int main(int argc, char const *argv[])
 
     std::vector<file> images;
     
-    //  Get positive sample form positive_samples directories
-    directory positive_dirs(faces_directory + "/positive_samples");
-    extract_samples_form_folder(detector, sp, positive_dirs, samples, labels, +1);
-    cout << "\tcomplete extract positive sample: " << endl;
-    cout << "\ttotal sample size: " << samples.size() << endl;
+    //  Get positive sample form train_positive_samples directories
+    directory train_positive_dirs(faces_directory + "/train/positive_samples");
+    extract_samples_form_folder(detector, sp, train_positive_dirs, samples, labels, +1);
+    cout << "\n\tcomplete extract train positive sample: ";
+    cout << "\n\ttotal sample in folder: " << samples.size();
 
 
-    //  Get negative sample form negative_samples directories
-    directory negative_dirs(faces_directory + "/negative_samples");
-    extract_samples_form_folder(detector, sp, negative_dirs, samples, labels, -1);
-    cout << "\tcomplete extract negative sample: " << endl;
-    cout << "\ttotal sample size: " << samples.size() << endl;
+    //  Get negative sample form train_negative_samples directories
+    directory train_negative_dirs(faces_directory + "/train/negative_samples");
+    extract_samples_form_folder(detector, sp, train_negative_dirs, samples, labels, -1);
+    cout << "\n\tcomplete extract negative sample: ";
+    cout << "\n\ttotal sample in folder: " << samples.size() << endl;
+
+    // Get test sample form test_positive_samples directories
+    directory test_positive_dirs(faces_directory + "/test/positive_samples");
+    // Get test sample form test_negative_samples directories
+    directory test_negative_dirs(faces_directory + "/test/negative_samples");
+
 
     // Reduce dimension of samples by dpca
-    cout << "reduceing dimension of samples ..." << endl;
+    cout << "\nreduceing dimension of samples ...";
     reduce_samples_dimension(samples, dpca_samples, 0.9);
-    cout << "\tcomplete reduce samples dimension." << endl;
-    cout << "\ttotal dpca_sample size: " << dpca_samples.size() << endl;
-
+    cout << "\n\tcomplete reduce samples dimension.";
+    cout << "\n\ttotal dpca_sample size: " << dpca_samples.size(); 
+    cout << "\n\teach dpca_sample size: " << dpca_samples[0].nr() << "x" 
+					<< dpca_samples[0].nc() << endl;
 
     // Here we normalize all the samples by subtracting their mean and dividing
     // by their standard deviation.  This is generally a good idea since it
@@ -363,18 +441,18 @@ int main(int argc, char const *argv[])
     // feature from smothering others.  Doing this doesn't matter much in this
     // example so I'm just doing this here so you can see an easy way to
     // accomplish it.  
-    vector_normalizer<sample_type> normalizer;
+    vector_normalizer<lower_sample_type> normalizer;
     // Let the normalizer learn the mean and standard deviation of the samples.
     normalizer.train(dpca_samples);
     // now normalize each sample
-    cout << "normalizing all the dpca_samples ..." << endl;
+    cout << "\nnormalizing all the dpca_samples ...";
     for (unsigned long i = 0; i < dpca_samples.size(); ++i)
-        dpca_samples[i] = normalizer(dpca_samples[i]); 
-  
+        dpca_samples[i] = normalizer(dpca_samples[i]);   
    
-    cout << "\n\tdpca_samples size: " << dpca_samples.size()
-         << "x" << dpca_samples[0].nc();   
-    cout << "\n\tlabels size: " << labels.size();
+    cout << "\n\tdpca_samples size: " << dpca_samples[0].nr()
+         << "x" << dpca_samples.size();   
+    cout << "\n\tlabels size: " << labels.size() << endl;
+
 
     // Now that we have some data we want to train on it.  However, there are
     // two parameters to the training.  These are the C and gamma parameters.
@@ -388,11 +466,11 @@ int main(int argc, char const *argv[])
     // the second half.  This would screw up the cross validation process but we
     // can fix it by randomizing the order of the samples with the following
     // function call.
-    cout << "randomizing all the dpca_samples ..." << endl;
+    cout << "\nrandomizing all the dpca_samples ...";
     randomize_samples(dpca_samples, labels);
-    cout << "\n\tdpca_samples size: " << dpca_samples.size()
-         << "x" << dpca_samples[0].nc();
-    cout << "\n\tlabels size: " << labels.size();
+    cout << "\n\tdpca_samples size: " << dpca_samples[0].nr()
+         << "x" << dpca_samples.size();
+    cout << "\n\tlabels size: " << labels.size() << endl;
 
 
     // here we make an instance of the svm_nu_trainer object
@@ -411,12 +489,30 @@ int main(int argc, char const *argv[])
     // predicts are in the +1 class and numbers < 0 for samples it predicts to
     // be in the -1 class.
     // doing cross validation ...
-    // gamma: 1e-05    C: 1     cross validation accuracy:        1 0.996363 
-    // gamma: 1e-05    C: 5     cross validation accuracy:        1 0.996363 
-    // gamma: 1e-05    C: 25     cross validation accuracy:        1 0.996363 
-    // gamma: 1e-05    C: 125     cross validation accuracy:        1 0.996363 
-    trainer.set_kernel(kernel_type(0.1));
-    trainer.set_nu(0.1);
+/*
+    cout << "doing cross validation" << endl;
+    for (double gamma = 0.00001; gamma <= 1; gamma *= 5)
+    {
+        for (double nu = 0.00001; nu < max_nu; nu *= 5)
+        {
+            // tell the trainer the parameters we want to use
+            trainer.set_kernel(kernel_type(gamma));
+            trainer.set_nu(nu);
+
+            cout << "gamma: " << gamma << "    nu: " << nu;
+            // Print out the cross validation accuracy for 3-fold cross validation using
+            // the current gamma and nu.  cross_validate_trainer() returns a row vector.
+            // The first element of the vector is the fraction of +1 training examples
+            // correctly classified and the second number is the fraction of -1 training
+            // examples correctly classified.
+            cout << "     cross validation accuracy: " << cross_validate_trainer(trainer, dpca_samples, labels, 3);
+        }
+    }
+*/
+
+ 
+    trainer.set_kernel(kernel_type(0.00025));
+    trainer.set_nu(0.00625);
     
     typedef decision_function<kernel_type> dec_funct_type;
     typedef normalized_function<dec_funct_type> dfunct_type;
@@ -427,16 +523,18 @@ int main(int argc, char const *argv[])
     learned_dfunct.normalizer = normalizer;
     learned_dfunct.function = trainer.train(dpca_samples, labels);
 
-    cout << "\nnumber of support vectors in our learned_dfunct is: "
+    cout << "\n\tnumber of support vectors in our learned_dfunct is: "
          << learned_dfunct.function.basis_vectors.size();
     serialize("saved_dfunction.dat") << learned_dfunct;
-    cout << "\nd_svm training complete !!!" << endl;
+    cout << "\n\td_svm training complete !!!" << endl;
 
     // accurary of training set
-    get_accurary_cross_training_set(detector, sp, positive_dirs, learned_dfunct, +1);
+    get_accurary_cross_training_set(detector, sp, train_positive_dirs, learned_dfunct, +1);
 
-    get_accurary_cross_training_set(detector, sp, negative_dirs, learned_dfunct, -1);
-
+    get_accurary_cross_training_set(detector, sp, train_negative_dirs, learned_dfunct, -1);
+    get_accurary_cross_training_set(detector, sp, test_positive_dirs, learned_dfunct, +1);
+    get_accurary_cross_training_set(detector, sp, test_negative_dirs, learned_dfunct, -1);
+ 
 
     // We can also train a decision function that reports a well conditioned
     // probability instead of just a number > 0 for the +1 class and < 0 for the
@@ -452,7 +550,7 @@ int main(int argc, char const *argv[])
     learned_pfunct.function = train_probabilistic_decision_function(trainer, dpca_samples, labels, 3);
     
     
-    cout << "\nnumber of support vectors in our learned_pfunct is: "
+    cout << "\n\tnumber of support vectors in our learned_pfunct is: "
          << learned_pfunct.function.decision_funct.basis_vectors.size();
     
     // Now we have a function that returns the probability that a given sample is of the +1 class.
@@ -461,12 +559,15 @@ int main(int argc, char const *argv[])
     // is serializable.  So for example, you can save the learned_pfunct object
     // to disk and recall it later like so:
     serialize("saved_pfunction.dat") << learned_pfunct;
-    cout << "\np_svm training complete !!!" << endl;
+    cout << "\n\tp_svm training complete !!!" << endl;
 
 
     // accurary of training set
-    get_accurary_cross_training_set(detector, sp, positive_dirs, learned_pfunct, +1);
+    get_accurary_cross_training_set(detector, sp, train_positive_dirs, learned_pfunct, +1);
 
-    get_accurary_cross_training_set(detector, sp, negative_dirs, learned_pfunct, -1);
+    get_accurary_cross_training_set(detector, sp, train_negative_dirs, learned_pfunct, -1);
+    get_accurary_cross_training_set(detector, sp, test_positive_dirs, learned_pfunct, +1);
+    get_accurary_cross_training_set(detector, sp, test_negative_dirs, learned_pfunct, -1);
+ 
 }
 
