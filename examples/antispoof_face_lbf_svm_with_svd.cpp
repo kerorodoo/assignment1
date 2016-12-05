@@ -43,22 +43,26 @@ void extract_customize_lbp_descriptors (
     //const unsigned long num_scales = 5; 
     feats.clear();
 
+    array2d<rgb_pixel> img_fixed(60, 60);
+    resize_image(img, img_fixed);
+
     array2d<unsigned char> lbp;
-    make_uniform_lbp_image(img, lbp);
+    make_uniform_lbp_image(img_fixed, lbp);
 
     std::vector<point> parts;
     parts.push_back(det.part(30));
 
     for (unsigned long i = 0; i < parts.size(); ++i)
-        extract_histogram_descriptors(lbp, parts[i], feats);
+        //extract_histogram_descriptors(lbp, parts[i], feats, 9, 9);
+        extract_uniform_lbp_descriptors (lbp, feats, 20);
 
     if (num_scales > 1)
     {
         pyramid_down<4> pyr;
 
         image_type img_temp;
-        pyr(img, img_temp);
-        //pyramid_up(img, img_temp, pyr);
+        pyr(img_fixed, img_temp);
+
         unsigned long num_pyr_calls = 1;
 
         // now pull the features out at coarser scales
@@ -70,13 +74,14 @@ void extract_customize_lbp_descriptors (
                       << "x" << img_temp.nc();
 
             for (unsigned long i = 0; i < parts.size(); ++i)
-                    extract_histogram_descriptors(lbp, pyr.point_down(parts[i],num_pyr_calls), feats);
+                    //extract_histogram_descriptors(lbp, pyr.point_down(parts[i],num_pyr_calls), feats, 10, 10);
+		    extract_uniform_lbp_descriptors (lbp, feats, 20);
 
 
             if (iter+1 < num_scales)
             {
-                //pyr(img_temp);
-                pyramid_up(img_temp, pyr);
+                pyr(img_temp);
+                //pyramid_up(img_temp, pyr);
                 ++num_pyr_calls;
             }
         }
@@ -104,6 +109,7 @@ void extract_samples_form_folder (
     std::vector<directory> image_dirs;  //path of folder form input dirs
     std::vector<file> images;   //path of images
     dlib::array2d<rgb_pixel> img;
+
     
     cout << "dataset directory: " << dirs.name() << endl;
 	cout << "dataset full path: " << dirs.full_name() << endl;
@@ -508,8 +514,8 @@ int main(int argc, char const *argv[])
             cout << "     cross validation accuracy: " << cross_validate_trainer(trainer, dpca_samples, labels, 3);
         }
     }
-*/
 
+*/
  
     trainer.set_kernel(kernel_type(0.00025));
     trainer.set_nu(0.00625);
