@@ -53,7 +53,6 @@ void extract_customize_lbp_descriptors (
     parts.push_back(det.part(30));
 
     for (unsigned long i = 0; i < parts.size(); ++i)
-        //extract_histogram_descriptors(lbp, parts[i], feats, 9, 9);
         extract_uniform_lbp_descriptors (lbp, feats, 20);
 
     if (num_scales > 1)
@@ -68,12 +67,11 @@ void extract_customize_lbp_descriptors (
         // now pull the features out at coarser scales
         for (unsigned long iter = 1; iter < num_scales; ++iter)
         {
-	    // now do the feature extraction
-	    make_uniform_lbp_image(img_temp, lbp);
+	        // now do the feature extraction
+	        make_uniform_lbp_image(img_temp, lbp);
 
             for (unsigned long i = 0; i < parts.size(); ++i)
-                    //extract_histogram_descriptors(lbp, pyr.point_down(parts[i],num_pyr_calls), feats, 10, 10);
-		    extract_uniform_lbp_descriptors (lbp, feats, 20);
+		        extract_uniform_lbp_descriptors (lbp, feats, 20);
 
 
             if (iter+1 < num_scales)
@@ -86,7 +84,7 @@ void extract_customize_lbp_descriptors (
     }
 
     for (unsigned long i = 0; i < feats.size(); ++i)
-	feats[i] = std::sqrt(feats[i]);
+	    feats[i] = std::sqrt(feats[i]);
     //DLIB_ASSERT(feats.size() == 99120, feats.size());
 }
 

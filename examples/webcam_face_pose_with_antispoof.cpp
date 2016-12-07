@@ -358,7 +358,7 @@ void extract_customize_lbp_descriptors (
     //const unsigned long num_scales = 5; 
     feats.clear();
 
-    array2d<rgb_pixel> img_fixed(60, 60);
+    array2d<rgb_pixel> img_fixed(120, 120);
     resize_image(img, img_fixed);
 
 
@@ -369,7 +369,6 @@ void extract_customize_lbp_descriptors (
     parts.push_back(det.part(30));
 
     for (unsigned long i = 0; i < parts.size(); ++i)
-        //extract_histogram_descriptors(lbp, parts[i], feats);
         extract_uniform_lbp_descriptors (lbp, feats, 20);
 
     if (num_scales > 1)
@@ -386,11 +385,8 @@ void extract_customize_lbp_descriptors (
         {
 	        // now do the feature extraction
 	        make_uniform_lbp_image(img_temp, lbp);
-	        std::cout << "\n\t\t img_pyr:" << img_temp.nr() 
-                      << "x" << img_temp.nc();
 
             for (unsigned long i = 0; i < parts.size(); ++i)
-                //extract_histogram_descriptors(lbp, pyr.point_down(parts[i],num_pyr_calls), feats);
 		        extract_uniform_lbp_descriptors (lbp, feats, 20);
 
 
@@ -404,7 +400,7 @@ void extract_customize_lbp_descriptors (
     }
 
     for (unsigned long i = 0; i < feats.size(); ++i)
-	feats[i] = std::sqrt(feats[i]);
+	    feats[i] = std::sqrt(feats[i]);
     //DLIB_ASSERT(feats.size() == 99120, feats.size());
 }
 
@@ -450,9 +446,9 @@ int main(int argc, char** argv)
 
         // Load svm model for anti-spoo
         //if (strcmp(argv[2], "_d") > 0)
-        //typedef decision_function<kernel_type> nfunct_type;
+        typedef decision_function<kernel_type> nfunct_type;
         //else
-        typedef probabilistic_decision_function<kernel_type> nfunct_type;  
+        //typedef probabilistic_decision_function<kernel_type> nfunct_type;  
         typedef normalized_function<nfunct_type> funct_type;
         
         funct_type learned_funct;
@@ -508,7 +504,7 @@ int main(int argc, char** argv)
             for (unsigned long i = 0; i < faces.size(); ++i)
             {
                 //extract_highdim_face_lbp_descriptors(img, shapes[i], feats, 5);
-                extract_customize_lbp_descriptors(img, shapes[i], feats, 1);
+                extract_customize_lbp_descriptors(img, shapes[i], feats, 3);
                 
                 sample_type sample(feats.size(), 1);
                 for (unsigned long feats_idx = 0; feats_idx < feats.size(); feats_idx++)
