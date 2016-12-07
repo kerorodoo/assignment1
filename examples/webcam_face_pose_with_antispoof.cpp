@@ -392,8 +392,8 @@ void extract_customize_lbp_descriptors (
 
             if (iter+1 < num_scales)
             {
-                //pyr(img_temp);
-                pyramid_up(img_temp, pyr);
+                pyr(img_temp);
+                //pyramid_up(img_temp, pyr);
                 ++num_pyr_calls;
             }
         }
