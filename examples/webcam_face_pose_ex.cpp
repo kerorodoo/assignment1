@@ -393,8 +393,17 @@ int main(int argc, char** argv)
             // while using cimg.
             cv_image<bgr_pixel> cimg(temp);
 
+            //  time stamp before detect
+            std::chrono::steady_clock::time_point detecter_begin = std::chrono::steady_clock::now();
             // Detect faces 
             std::vector<rectangle> faces = detector(cimg);
+            
+            std::cout << "image size: " << cimg.nr() << "x" << cimg.nc() << std::endl;
+            //  time stamp after detect
+            std::chrono::steady_clock::time_point detecter_end = std::chrono::steady_clock::now();
+            std::cout << "Time difference ( detector )= " 
+                      << ( std::chrono::duration_cast<std::chrono::milliseconds> (detecter_end - detecter_begin).count() ) << " ms" << std::endl;
+
             // Find the pose of each face.
             std::vector<full_object_detection> shapes;
 
@@ -406,8 +415,8 @@ int main(int argc, char** argv)
 
             //  time stamp after alignment
             std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-            std::cout << "Time difference = " << ( std::chrono::duration_cast<
-                std::chrono::microseconds> (end - begin).count() ) << std::endl;
+            std::cout << "Time difference = " 
+                      << ( std::chrono::duration_cast<std::chrono::milliseconds> (end - begin).count() ) << " ms" << std::endl;
 
             // Get the initial cascade of alignment for each face.
             std::vector<full_object_detection> initial_shapes;

@@ -342,6 +342,75 @@ std::vector<image_window::overlay_rect> render_face_detections_rect(
 
 //----------------------------------------------------------------------------------------
 
+//-----------------------------------------------------------------------------
+
+template <
+    typename image_type,
+    typename T
+    >
+void extract_customize_lbp_descriptors (
+    const image_type& img,
+    const full_object_detection& det, 
+    std::vector<T>& feats,
+    const unsigned long num_scales = 5
+)
+{
+    //const unsigned long num_scales = 5; 
+    feats.clear();
+
+    array2d<rgb_pixel> img_fixed(60, 60);
+    resize_image(img, img_fixed);
+
+
+    array2d<unsigned char> lbp;
+    make_uniform_lbp_image(img_fixed, lbp);
+
+    std::vector<point> parts;
+    parts.push_back(det.part(30));
+
+    for (unsigned long i = 0; i < parts.size(); ++i)
+        //extract_histogram_descriptors(lbp, parts[i], feats);
+        extract_uniform_lbp_descriptors (lbp, feats, 20);
+
+    if (num_scales > 1)
+    {
+        pyramid_down<4> pyr;
+
+        image_type img_temp;
+        pyr(img_fixed, img_temp);
+        //pyramid_up(img, img_temp, pyr);
+        unsigned long num_pyr_calls = 1;
+
+        // now pull the features out at coarser scales
+        for (unsigned long iter = 1; iter < num_scales; ++iter)
+        {
+	        // now do the feature extraction
+	        make_uniform_lbp_image(img_temp, lbp);
+	        std::cout << "\n\t\t img_pyr:" << img_temp.nr() 
+                      << "x" << img_temp.nc();
+
+            for (unsigned long i = 0; i < parts.size(); ++i)
+                //extract_histogram_descriptors(lbp, pyr.point_down(parts[i],num_pyr_calls), feats);
+		        extract_uniform_lbp_descriptors (lbp, feats, 20);
+
+
+            if (iter+1 < num_scales)
+            {
+                //pyr(img_temp);
+                pyramid_up(img_temp, pyr);
+                ++num_pyr_calls;
+            }
+        }
+    }
+
+    for (unsigned long i = 0; i < feats.size(); ++i)
+	feats[i] = std::sqrt(feats[i]);
+    //DLIB_ASSERT(feats.size() == 99120, feats.size());
+}
+
+
+//-----------------------------------------------------------------------------
+
 //----------------------------------------------------------------------------------------
 
 
@@ -381,9 +450,9 @@ int main(int argc, char** argv)
 
         // Load svm model for anti-spoo
         //if (strcmp(argv[2], "_d") > 0)
-        //    typedef decision_function<kernel_type> nfunct_type;
+        //typedef decision_function<kernel_type> nfunct_type;
         //else
-            typedef probabilistic_decision_function<kernel_type> nfunct_type;  
+        typedef probabilistic_decision_function<kernel_type> nfunct_type;  
         typedef normalized_function<nfunct_type> funct_type;
         
         funct_type learned_funct;
@@ -429,6 +498,7 @@ int main(int argc, char** argv)
             dlib::array2d<rgb_pixel> img;
             assign_image(img, cimg);
 
+            std::vector<bool> positive_flag;
             //  time stamp before classifier
             begin = std::chrono::steady_clock::now();
            
@@ -437,7 +507,8 @@ int main(int argc, char** argv)
 
             for (unsigned long i = 0; i < faces.size(); ++i)
             {
-                extract_highdim_face_lbp_descriptors(img, shapes[i], feats, 5);
+                //extract_highdim_face_lbp_descriptors(img, shapes[i], feats, 5);
+                extract_customize_lbp_descriptors(img, shapes[i], feats, 1);
                 
                 sample_type sample(feats.size(), 1);
                 for (unsigned long feats_idx = 0; feats_idx < feats.size(); feats_idx++)
@@ -446,11 +517,20 @@ int main(int argc, char** argv)
                 }
 
         
-                matrix<double> samp(trans(sample) * pu);
+                //matrix<double> samp(trans(sample) * pu);
+                matrix<double> samp(sample);
+                double classifier_output = learned_funct(samp);
 
                 cout << "highdim face lbp descriptors feats after reduce: " << samp.nr()  << "x" << samp.nc() << endl;
 
-                cout << "face[" << i << "] the classifier output is " << learned_funct(samp) << endl;
+                cout << "face[" << i << "] the classifier output is " << classifier_output << endl;
+                if (classifier_output > 0.5)
+                {
+                    cout << "positive !!!" << endl;
+                    positive_flag.push_back(true);
+                }
+                else
+                    positive_flag.push_back(false);
             }
             
             end = std::chrono::steady_clock::now();
@@ -464,8 +544,15 @@ int main(int argc, char** argv)
             // Draw th rect from face detect result:faces
             if (faces.size() > 0 )
             {
-                rgb_pixel color = rgb_pixel(255, 0, 0);
-                win.add_overlay(render_face_detections_rect(faces, color));
+                for (unsigned long i = 0; i < faces.size(); ++i)
+                {
+                    std::vector<rectangle> face;
+                    rgb_pixel color = rgb_pixel(128, 128, 128);
+                    if (positive_flag[i])
+                        color = rgb_pixel(255, 0, 0);
+                    face.push_back(faces[i]);
+                    win.add_overlay(render_face_detections_rect(face, color));
+                }
             }
 
             if (initial_shapes.size() > 0)
