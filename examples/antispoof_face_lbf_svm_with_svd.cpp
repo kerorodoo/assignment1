@@ -43,7 +43,7 @@ void extract_customize_lbp_descriptors (
     //const unsigned long num_scales = 5; 
     feats.clear();
 
-    array2d<rgb_pixel> img_fixed(60, 60);
+    array2d<rgb_pixel> img_fixed(120, 120);
     resize_image(img, img_fixed);
 
     array2d<unsigned char> lbp;
@@ -70,8 +70,6 @@ void extract_customize_lbp_descriptors (
         {
 	    // now do the feature extraction
 	    make_uniform_lbp_image(img_temp, lbp);
-	    std::cout << "\n\t\t img_pyr:" << img_temp.nr() 
-                      << "x" << img_temp.nc();
 
             for (unsigned long i = 0; i < parts.size(); ++i)
                     //extract_histogram_descriptors(lbp, pyr.point_down(parts[i],num_pyr_calls), feats, 10, 10);
@@ -161,7 +159,7 @@ void extract_samples_form_folder (
                 std::vector<double> feats;
 
 		
-                extract_customize_lbp_descriptors(img, shape, feats, 1);
+                extract_customize_lbp_descriptors(img, shape, feats, 3);
 
                 cout << "feats: " << feats.size() << endl;
 
@@ -333,7 +331,7 @@ void get_accurary_cross_training_set (
                 std::vector<double> feats;
 
                 //extract faces
-                extract_customize_lbp_descriptors(img, shape, feats, 1);
+                extract_customize_lbp_descriptors(img, shape, feats, 3);
 
 
                 sample_type sample(feats.size(), 1);
