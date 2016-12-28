@@ -16,21 +16,46 @@
 
 #include <dlib/opencv.h>
 #include <opencv2/highgui/highgui.hpp>
-
 #include <dlib/image_processing/frontal_face_detector.h>
 #include <dlib/image_processing/render_face_detections.h>
 #include <dlib/image_processing.h>
 #include <dlib/gui_widgets.h>
-
 #include <dlib/image_transforms/lbp.h>
 #include <dlib/svm.h>
+
+#include "swd_tools.cpp"
 
 #include <string>
 #include <chrono>
 
+
 using namespace dlib;
 using namespace std;
 
+
+//----------------------------------------------------------------------------------------
+
+
+template <
+    typename image_type,
+    typename T
+    >
+void extract_customize_descriptors(
+    const image_type& img_rgb,
+    const full_object_detection& det,
+    std::vector<T>& feats
+)
+{
+    feats.clear();
+
+    dlib::array2d<double> img_gray;
+    dlib::assign_image(img_gray, img_rgb);
+
+    dlib::array2d<double> img_diff;
+    anisodiff(img_gray, img_diff, 5, 100, 0.25, 2);
+
+    extract_customize_lbp_descriptors(img_diff, det, feats, 3);
+}
 
 //----------------------------------------------------------------------------------------
 
@@ -342,70 +367,6 @@ std::vector<image_window::overlay_rect> render_face_detections_rect(
 
 //----------------------------------------------------------------------------------------
 
-//-----------------------------------------------------------------------------
-
-template <
-    typename image_type,
-    typename T
-    >
-void extract_customize_lbp_descriptors (
-    const image_type& img,
-    const full_object_detection& det, 
-    std::vector<T>& feats,
-    const unsigned long num_scales = 5
-)
-{
-    //const unsigned long num_scales = 5; 
-    feats.clear();
-
-    array2d<rgb_pixel> img_fixed(120, 120);
-    resize_image(img, img_fixed);
-
-
-    array2d<unsigned char> lbp;
-    make_uniform_lbp_image(img_fixed, lbp);
-
-    std::vector<point> parts;
-    parts.push_back(det.part(30));
-
-    for (unsigned long i = 0; i < parts.size(); ++i)
-        extract_uniform_lbp_descriptors (lbp, feats, 20);
-
-    if (num_scales > 1)
-    {
-        pyramid_down<4> pyr;
-
-        image_type img_temp;
-        pyr(img_fixed, img_temp);
-        //pyramid_up(img, img_temp, pyr);
-        unsigned long num_pyr_calls = 1;
-
-        // now pull the features out at coarser scales
-        for (unsigned long iter = 1; iter < num_scales; ++iter)
-        {
-	        // now do the feature extraction
-	        make_uniform_lbp_image(img_temp, lbp);
-
-            for (unsigned long i = 0; i < parts.size(); ++i)
-		        extract_uniform_lbp_descriptors (lbp, feats, 20);
-
-
-            if (iter+1 < num_scales)
-            {
-                pyr(img_temp);
-                //pyramid_up(img_temp, pyr);
-                ++num_pyr_calls;
-            }
-        }
-    }
-
-    for (unsigned long i = 0; i < feats.size(); ++i)
-	    feats[i] = std::sqrt(feats[i]);
-    //DLIB_ASSERT(feats.size() == 99120, feats.size());
-}
-
-
-//-----------------------------------------------------------------------------
 
 //----------------------------------------------------------------------------------------
 
@@ -433,7 +394,7 @@ int main(int argc, char** argv)
             cout << "Call this program like this:" << endl;
             cout << "./webcam_face_pose_ex shape_predictor_68_face_landmarks.dat pu.dat saved_pfunction.dat faces/*.jpg" << endl;
         }
-        image_window win;
+        image_window win, win_hist;
 
         // Load face detection and pose estimation models.
         frontal_face_detector detector = get_frontal_face_detector();
@@ -474,15 +435,15 @@ int main(int argc, char** argv)
             std::vector<full_object_detection> shapes;
 
             //  time stamp before alignment
-            std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+            //std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
             //  Get the alignment result for each face. 
             for (unsigned long i = 0; i < faces.size(); ++i)
                 shapes.push_back(pose_model(cimg, faces[i]));
 
             //  time stamp after alignment
-            std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-            std::cout << "Time difference (for shape predictor)= " << ( std::chrono::duration_cast<
-                std::chrono::microseconds> (end - begin).count() ) << std::endl;
+            //std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+            //std::cout << "Time difference (for shape predictor)= " << ( std::chrono::duration_cast<
+            //    std::chrono::microseconds> (end - begin).count() ) << std::endl;
 
             // Get the initial cascade of alignment for each face.
             std::vector<full_object_detection> initial_shapes;
@@ -494,23 +455,32 @@ int main(int argc, char** argv)
             dlib::array2d<rgb_pixel> img;
             assign_image(img, cimg);
 
+
             std::vector<bool> positive_flag;
             //  time stamp before classifier
-            begin = std::chrono::steady_clock::now();
+            //begin = std::chrono::steady_clock::now();
            
             // extract highdim face lbp descriptors and Get classifier output
             std::vector<double> feats;
 
+            dlib::array2d<double> hist_img;
+            std::vector<sample_type> samples;
+            
+            
             for (unsigned long i = 0; i < faces.size(); ++i)
             {
-                //extract_highdim_face_lbp_descriptors(img, shapes[i], feats, 5);
-                extract_customize_lbp_descriptors(img, shapes[i], feats, 3);
+                dlib::array2d<rgb_pixel> face_chips;
+                extract_image_chip(img, get_face_chip_details(shapes[i]), face_chips);
+
+                extract_customize_descriptors(face_chips, shapes[i], feats);
                 
                 sample_type sample(feats.size(), 1);
                 for (unsigned long feats_idx = 0; feats_idx < feats.size(); feats_idx++)
                 {
                     sample(feats_idx) = feats[feats_idx];
                 }
+
+                samples.push_back(sample);
 
         
                 //matrix<double> samp(trans(sample) * pu);
@@ -524,18 +494,45 @@ int main(int argc, char** argv)
                 {
                     cout << "positive !!!" << endl;
                     positive_flag.push_back(true);
+
                 }
                 else
                     positive_flag.push_back(false);
             }
-            
-            end = std::chrono::steady_clock::now();
-            std::cout << "Time difference (for classifier)= " << ( std::chrono::duration_cast<
-                std::chrono::microseconds> (end - begin).count() ) << std::endl;
+
+
+            hist_img.set_size(faces.size()*20, feats.size());
+           
+            if (samples.size() == 2)
+            {
+                for (unsigned long sample_idx = 0; sample_idx < samples[0].nr(); sample_idx++)
+                    if (samples[0](0, sample_idx) == samples[1](0, sample_idx))
+                        cout << "samples[0](0, sample_idx) != samples[1](0, sample_idx)" << endl; 
+            }
+
+            for (unsigned long i = 0; i < faces.size(); ++i)
+            {
+                if(i > samples.size())
+                    continue;
+                for (unsigned long sample_idx = 0; sample_idx < samples[i].nr(); sample_idx++)
+                {
+                    for (unsigned long r = 0; r < 20; r++)
+                        dlib::assign_pixel(hist_img[i * 20 + r][sample_idx], samples[i](0, sample_idx));
+                
+                }
+            }
+
+            //end = std::chrono::steady_clock::now();
+            //std::cout << "Time difference (for classifier)= " << ( std::chrono::duration_cast<
+            //    std::chrono::microseconds> (end - begin).count() ) << std::endl;
+            // 8ms in test
 
             // Display it all on the screen
             win.clear_overlay();
             win.set_image(cimg);
+
+            win_hist.clear_overlay();
+            win_hist.set_image(hist_img);
             
             // Draw th rect from face detect result:faces
             if (faces.size() > 0 )

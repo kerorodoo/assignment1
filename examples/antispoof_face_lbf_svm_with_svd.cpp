@@ -20,12 +20,12 @@
 #include <dlib/image_io.h>
 #include <dlib/dir_nav.h>
 #include <dlib/matrix.h>
-
 #include <dlib/svm.h>
+
+#include "swd_tools.cpp"
 
 using namespace std;
 using namespace dlib;
-
 
 //-----------------------------------------------------------------------------
 
@@ -33,61 +33,22 @@ template <
     typename image_type,
     typename T
     >
-void extract_customize_lbp_descriptors (
-    const image_type& img,
-    const full_object_detection& det, 
-    std::vector<T>& feats,
-    const unsigned long num_scales = 5
+void extract_customize_descriptors(
+    const image_type& img_rgb,
+    const full_object_detection& det,
+    std::vector<T>& feats
 )
 {
-    //const unsigned long num_scales = 5; 
     feats.clear();
 
-    array2d<rgb_pixel> img_fixed(120, 120);
-    resize_image(img, img_fixed);
+    dlib::array2d<double> img_gray;
+    dlib::assign_image(img_gray, img_rgb);
 
-    array2d<unsigned char> lbp;
-    make_uniform_lbp_image(img_fixed, lbp);
+    dlib::array2d<double> img_diff;
+    anisodiff(img_gray, img_diff, 5, 100, 0.25, 2);
 
-    std::vector<point> parts;
-    parts.push_back(det.part(30));
-
-    for (unsigned long i = 0; i < parts.size(); ++i)
-        extract_uniform_lbp_descriptors (lbp, feats, 20);
-
-    if (num_scales > 1)
-    {
-        pyramid_down<4> pyr;
-
-        image_type img_temp;
-        pyr(img_fixed, img_temp);
-
-        unsigned long num_pyr_calls = 1;
-
-        // now pull the features out at coarser scales
-        for (unsigned long iter = 1; iter < num_scales; ++iter)
-        {
-	        // now do the feature extraction
-	        make_uniform_lbp_image(img_temp, lbp);
-
-            for (unsigned long i = 0; i < parts.size(); ++i)
-		        extract_uniform_lbp_descriptors (lbp, feats, 20);
-
-
-            if (iter+1 < num_scales)
-            {
-                pyr(img_temp);
-                //pyramid_up(img_temp, pyr);
-                ++num_pyr_calls;
-            }
-        }
-    }
-
-    for (unsigned long i = 0; i < feats.size(); ++i)
-	    feats[i] = std::sqrt(feats[i]);
-    //DLIB_ASSERT(feats.size() == 99120, feats.size());
+    extract_customize_lbp_descriptors(img_diff, det, feats, 3);
 }
-
 
 //-----------------------------------------------------------------------------
 template <
@@ -156,8 +117,11 @@ void extract_samples_form_folder (
 
                 std::vector<double> feats;
 
-		
-                extract_customize_lbp_descriptors(img, shape, feats, 3);
+
+                dlib::array2d<rgb_pixel> face_chips;
+                extract_image_chip(img, get_face_chip_details(shapes[i]), face_chips);
+                
+                extract_customize_descriptors(face_chips, shape, feats);
 
                 cout << "feats: " << feats.size() << endl;
 
@@ -320,16 +284,16 @@ void get_accurary_cross_training_set (
                 image_count++;
 
                 // Now we will go ask the shape_predictor to tell us the pose of
-		// each face we detected.
-		std::vector<full_object_detection> shapes;
+    	    	// each face we detected.
+	    	    std::vector<full_object_detection> shapes;
 
                 // detect landmarks
-	        full_object_detection shape = sp(img, dets[i]);
+	            full_object_detection shape = sp(img, dets[i]);
 				
                 std::vector<double> feats;
 
                 //extract faces
-                extract_customize_lbp_descriptors(img, shape, feats, 3);
+                extract_customize_descriptors(img, shape, feats);
 
 
                 sample_type sample(feats.size(), 1);
