@@ -108,7 +108,6 @@ void extract_samples_form_folder (
             {
                 // Now we will go ask the shape_predictor to tell us the pose of
 				// each face we detected.
-				std::vector<full_object_detection> shapes;
 
 				full_object_detection shape = sp(img, dets[i]);
 				cout << "number of parts: "<< shape.num_parts() << endl;
@@ -118,10 +117,10 @@ void extract_samples_form_folder (
                 std::vector<double> feats;
 
 
-                dlib::array2d<rgb_pixel> face_chips;
-                extract_image_chip(img, get_face_chip_details(shapes[i]), face_chips);
+                dlib::array2d<rgb_pixel> face_chip;
+                extract_image_chip(img, get_face_chip_details(shape), face_chip);
                 
-                extract_customize_descriptors(face_chips, shape, feats);
+                extract_customize_descriptors(face_chip, shape, feats);
 
                 cout << "feats: " << feats.size() << endl;
 
